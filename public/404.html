@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cerne</title>
+    <!-- GitHub Pages serve este arquivo em todo endereço que não existe. Ele devolve a rota ao app em /Cerne/:
+         /Cerne/dono/repo/blob/main/x.ts vira /Cerne/?/dono/repo/blob/main/x.ts, e o index.html desfaz a troca
+         antes do app iniciar (public/restaurar-rota.js). Um segmento do caminho é mantido: "Cerne". -->
+    <script>
+      var segmentosMantidos = 1;
+      var l = window.location;
+      l.replace(
+        l.protocol +
+          '//' +
+          l.hostname +
+          (l.port ? ':' + l.port : '') +
+          l.pathname.split('/').slice(0, 1 + segmentosMantidos).join('/') +
+          '/?/' +
+          l.pathname.slice(1).split('/').slice(segmentosMantidos).join('/').replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash,
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

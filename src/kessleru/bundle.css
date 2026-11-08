@@ -1,0 +1,1856 @@
+
+/* Kessleru: componentes das três superfícies (versão completa, versão simples e minicurso).
+   Todas as cores vêm dos tokens (tokens.css); as transparências usam color-mix sobre eles. */
+
+/* ---------- base ---------- */
+body {
+  margin: 0;
+  background: var(--ctp-base);
+  color: var(--ctp-text);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ctp-accent) 80%, transparent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--ctp-accent) 45%, transparent);
+  color: var(--ctp-text);
+}
+
+button:not(:disabled):active {
+  scale: 0.97;
+}
+
+.ks-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- Card (versão completa) ---------- */
+.ks-card {
+  position: relative;
+  padding-top: 16px;
+}
+
+.ks-card__tab {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--ctp-crust);
+  color: var(--ctp-text);
+  font: 500 12px/16px var(--font-mono);
+}
+
+.ks-card__tab svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ctp-accent);
+  fill: currentColor;
+}
+
+.ks-card__body {
+  position: relative;
+  z-index: 1;
+  padding: var(--space-4);
+  border: var(--border-card) solid color-mix(in srgb, var(--ctp-crust) 20%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--ctp-mantle);
+  box-shadow: var(--shadow-card);
+}
+
+/* aba aberta (hover/foco com mouse): o canto encostado nela fica reto */
+.ks-card.is-open .ks-card__body {
+  border-top-left-radius: 0;
+  border-color: color-mix(in srgb, var(--ctp-crust) 45%, transparent);
+}
+
+.ks-card:not(.is-open) .ks-card__tab {
+  translate: 0 100%;
+  opacity: 0;
+}
+
+/* ---------- Header de editor (versão completa) ---------- */
+.ks-editor {
+  overflow: hidden;
+  border: var(--border-card) solid color-mix(in srgb, var(--ctp-crust) 20%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--ctp-mantle);
+  box-shadow: var(--shadow-card);
+}
+
+.ks-titlebar,
+.ks-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: color-mix(in srgb, var(--ctp-crust) 30%, transparent);
+  color: var(--ctp-meta);
+  font: 400 12px/16px var(--font-mono);
+  letter-spacing: 0.025em;
+  user-select: none;
+}
+
+.ks-titlebar {
+  padding: 6px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ctp-crust) 40%, transparent);
+}
+
+.ks-statusbar {
+  flex-wrap: wrap;
+  padding: 6px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--ctp-crust) 40%, transparent);
+}
+
+.ks-statusbar strong {
+  color: var(--ctp-accent);
+  font-weight: 400;
+}
+
+.ks-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.ks-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+}
+
+.ks-dots span:nth-child(1) { background: var(--ctp-red); }
+.ks-dots span:nth-child(2) { background: var(--ctp-yellow); }
+.ks-dots span:nth-child(3) { background: var(--ctp-green); }
+
+.ks-editor__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+}
+
+.ks-path {
+  font: 400 16px/24px var(--font-mono);
+  letter-spacing: 0.025em;
+}
+
+.ks-path a {
+  color: var(--ctp-accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* cursor de terminal depois do caminho */
+.ks-path::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--ctp-accent);
+}
+
+.ks-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 16px/24px var(--font-mono);
+}
+
+.ks-nav a {
+  color: var(--ctp-text);
+  text-decoration: none;
+}
+
+.ks-nav .sep {
+  color: var(--ctp-overlay-0);
+}
+
+/* ---------- Botões ---------- */
+.ks-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: var(--border-card) solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  font: 500 14px/20px var(--font-mono);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.ks-btn--primary {
+  border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--ctp-accent) 10%, transparent);
+  color: var(--ctp-accent);
+}
+
+.ks-btn--secondary {
+  border-color: var(--ctp-surface-1);
+  color: var(--ctp-subtext-1);
+}
+
+/* versão simples e minicurso: borda fina e fonte do sistema */
+.ks-btn--thin {
+  border-width: var(--border-hairline);
+  font-family: var(--font-sans);
+}
+
+.ks-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ctp-meta);
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-btn--primary:hover {
+    background: color-mix(in srgb, var(--ctp-accent) 20%, transparent);
+  }
+
+  .ks-btn--secondary:hover {
+    border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent);
+    color: var(--ctp-accent);
+  }
+
+  .ks-icon-btn:hover,
+  .ks-nav a:hover {
+    color: var(--ctp-accent);
+  }
+}
+
+/* ---------- Tag (tecnologia) ---------- */
+.ks-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ks-tag {
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--tag, var(--ctp-subtext-1)) 40%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--tag, var(--ctp-subtext-1));
+  font: 400 12px/16px var(--font-mono);
+}
+
+/* chip neutro da versão simples */
+.ks-tag--plain {
+  padding: 4px 10px;
+  border-color: var(--ctp-surface-1);
+  color: var(--ctp-subtext-1);
+}
+
+/* ---------- Tema e destaque ---------- */
+.ks-theme {
+  display: grid;
+  gap: 16px;
+}
+
+.ks-theme p {
+  margin: 0 0 8px;
+  font: 600 14px/20px var(--font-mono);
+}
+
+.ks-theme__themes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.ks-theme__themes button {
+  padding: 6px 12px;
+  border: 1px solid var(--ctp-overlay-0);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ctp-subtext-0);
+  font: 400 12px/16px var(--font-mono);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ks-theme__themes button[aria-pressed='true'] {
+  border-color: var(--ctp-accent);
+  background: var(--ctp-surface-0);
+  color: var(--ctp-accent);
+}
+
+.ks-theme__accents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ks-theme__accents button {
+  width: 28px;
+  height: 28px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: scale 150ms ease;
+}
+
+.ks-theme__accents button[aria-pressed='true'] {
+  border-color: var(--ctp-mantle);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ctp-text) 80%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-theme__accents button:hover {
+    scale: 1.1;
+  }
+
+  .ks-theme__themes button:hover {
+    color: var(--ctp-text);
+  }
+}
+
+/* ---------- Código ---------- */
+.ks-code {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--ctp-surface-0);
+  border-radius: var(--radius-xl);
+  background: var(--ctp-mantle);
+}
+
+.ks-code figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--ctp-surface-0);
+  color: var(--ctp-subtext-0);
+  font: 400 12px/16px var(--font-mono);
+}
+
+.ks-code pre {
+  margin: 0;
+  overflow-x: auto;
+  padding: 14px 16px;
+  font: 400 13px/24px var(--font-mono);
+}
+
+/* linhas numeradas do Profile.tsx; a linha atual ganha fundo */
+.ks-lines {
+  margin: 0;
+  padding: 4px 0;
+  font: 400 14px/1.625 var(--font-mono);
+}
+
+.ks-lines span.ln {
+  display: inline-block;
+  width: 40px;
+  padding-right: 16px;
+  color: var(--ctp-overlay-1);
+  text-align: right;
+  user-select: none;
+}
+
+.ks-lines .current {
+  background: color-mix(in srgb, var(--ctp-surface-0) 60%, transparent);
+}
+
+.ks-lines .current .ln {
+  color: var(--ctp-text);
+}
+
+.tok-keyword { color: var(--ctp-mauve); }
+.tok-string { color: var(--ctp-green); }
+.tok-number { color: var(--ctp-peach); }
+.tok-key { color: var(--ctp-lavender); }
+.tok-op { color: var(--ctp-sky); }
+.tok-punct { color: var(--ctp-overlay-2); }
+.tok-b1 { color: var(--ctp-yellow); }
+.tok-b2 { color: var(--ctp-pink); }
+.tok-b3 { color: var(--ctp-sapphire); }
+.tok-comment { color: var(--ctp-overlay-2); font-style: italic; }
+
+/* ---------- Kess: balão de fala ---------- */
+.ks-bubble {
+  --bubble-border: color-mix(in srgb, var(--ctp-accent) 45%, var(--ctp-surface-1));
+  position: relative;
+  display: inline-block;
+  padding: 5px 10px;
+  border: 2px solid var(--bubble-border);
+  border-radius: var(--radius-lg);
+  background: var(--ctp-mantle);
+  color: var(--ctp-text);
+  font: 500 12px/1.4 var(--font-mono);
+  white-space: nowrap;
+  box-shadow: var(--shadow-bubble);
+}
+
+.ks-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 10px;
+  width: 9px;
+  height: 9px;
+  background: var(--ctp-mantle);
+  border-right: 2px solid var(--bubble-border);
+  border-bottom: 2px solid var(--bubble-border);
+  rotate: 45deg;
+}
+
+/* ---------- Versão simples e minicurso ---------- */
+.ks-simple {
+  font-family: var(--font-sans);
+}
+
+.ks-simple-header {
+  border-bottom: 1px solid var(--ctp-surface-0);
+  background: color-mix(in srgb, var(--ctp-base) 85%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.ks-simple-header__top,
+.ks-simple-header nav {
+  display: flex;
+  align-items: center;
+  max-width: var(--column-simple);
+  margin: 0 auto;
+  padding-inline: 20px;
+}
+
+.ks-simple-header__top {
+  justify-content: space-between;
+  padding-block: 12px;
+}
+
+.ks-logo {
+  color: var(--ctp-text);
+  font: 600 14px/20px var(--font-mono);
+  text-decoration: none;
+}
+
+.ks-logo span {
+  color: var(--ctp-accent);
+}
+
+.ks-simple-header nav {
+  gap: 24px;
+  overflow-x: auto;
+  font: 400 14px/20px var(--font-sans);
+  scrollbar-width: none;
+}
+
+.ks-nav-link {
+  position: relative;
+  padding-block: 10px;
+  color: var(--ctp-subtext-0);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* linha embaixo do item atual, encostada na borda do header; sem animação */
+.ks-nav-link::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--ctp-accent);
+  opacity: 0;
+}
+
+.ks-nav-link[aria-current='page'] {
+  color: var(--ctp-text);
+}
+
+.ks-nav-link[aria-current='page']::after {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-nav-link:hover {
+    color: var(--ctp-text);
+  }
+
+  .ks-nav-link:hover::after {
+    opacity: 1;
+  }
+}
+
+/* título de seção: rótulo mono com um fio até a borda */
+.ks-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--ctp-meta);
+  font: 500 12px/16px var(--font-mono);
+}
+
+.ks-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ctp-surface-0);
+}
+
+/* cabeçalho de seção numerada do minicurso */
+.ks-section-head {
+  display: grid;
+  gap: 12px;
+  padding-top: 32px;
+  border-top: 1px solid var(--ctp-surface-0);
+}
+
+.ks-section-head .num {
+  margin: 0;
+  color: var(--ctp-meta);
+  font: 400 12px/16px var(--font-mono);
+}
+
+.ks-section-head .num b {
+  color: var(--ctp-accent);
+  font-weight: 400;
+}
+
+.ks-section-head h2 {
+  margin: 0;
+  color: var(--ctp-text);
+  font: 600 30px/36px var(--font-sans);
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.ks-prose {
+  max-width: var(--measure-prose);
+  margin: 0;
+  color: var(--ctp-subtext-1);
+  font: 400 17px/1.7 var(--font-sans);
+  text-wrap: pretty;
+}
+
+.ks-prose strong {
+  color: var(--ctp-text);
+  font-weight: 600;
+}
+
+/* card de link da versão simples */
+.ks-link-card {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--ctp-surface-0);
+  border-radius: var(--radius-lg);
+  color: inherit;
+  font-family: var(--font-sans);
+  text-decoration: none;
+  transition: border-color 150ms ease;
+}
+
+.ks-link-card__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ctp-text);
+  font: 500 16px/24px var(--font-sans);
+}
+
+.ks-link-card__title svg {
+  color: var(--ctp-subtext-0);
+  transition:
+    translate 150ms ease,
+    color 150ms ease;
+}
+
+.ks-link-card__desc {
+  display: block;
+  margin-top: 4px;
+  color: var(--ctp-subtext-0);
+  font: 400 14px/20px var(--font-sans);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-link-card:hover {
+    border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent);
+  }
+
+  .ks-link-card:hover .ks-link-card__title svg {
+    translate: 2px 0;
+    color: var(--ctp-accent);
+  }
+}
+
+/* botão de copiar (minicurso) */
+.ks-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ctp-meta);
+  font: 400 12px/16px var(--font-mono);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.ks-copy .ks-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.ks-copy[data-done] {
+  color: var(--ctp-accent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-copy:not([data-done]):hover {
+    background: color-mix(in srgb, var(--ctp-surface-0) 60%, transparent);
+    color: var(--ctp-text);
+  }
+}
+
+/* abrir/fechar com + e − (minicurso) */
+.ks-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ctp-subtext-1);
+  font: 500 14px/20px var(--font-sans);
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.ks-toggle .box {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: 4px;
+  font: 400 12px/1 var(--font-mono);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-toggle:hover {
+    color: var(--ctp-accent);
+  }
+}
+
+/* foto/captura com legenda (minicurso) */
+.ks-figure {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.ks-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--ctp-surface-0);
+  border-radius: var(--radius-lg);
+}
+
+.ks-figure figcaption {
+  color: var(--ctp-subtext-0);
+  font: 400 14px/20px var(--font-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* ---------- Aplicativo (visualizador de repositórios) ----------
+   Superfície densa, de tela inteira. Painéis com borda de 1px e sem sombra;
+   sombra só em sobreposições (paleta, menu, aviso). Só tokens. */
+:root {
+  --ks-overlay-shadow: 0 16px 40px color-mix(in srgb, var(--ctp-crust) 45%, transparent);
+}
+
+.ks-app {
+  --row-h: 26px;
+  --code-font: var(--font-mono);
+  --code-size: 13px;
+  --code-line: 1.6;
+  --code-tab: 2;
+  --code-ligatures: normal;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100dvh;
+  background: var(--ctp-base);
+  color: var(--ctp-text);
+  font-family: var(--font-mono);
+}
+
+.ks-app[data-density='compact'] { --row-h: 22px; --code-line: 1.45; }
+.ks-app[data-density='comfortable'] { --row-h: 30px; --code-line: 1.75; }
+
+/* barra de cima */
+.ks-appbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  height: 44px;
+  padding-inline: var(--space-3);
+  border-bottom: 1px solid var(--ctp-surface-0);
+  background: var(--ctp-mantle);
+}
+
+.ks-appbar__repo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ctp-text);
+  font: 500 13px/20px var(--font-mono);
+  white-space: nowrap;
+}
+
+.ks-appbar__repo .ks-icon { color: var(--ctp-meta); }
+
+.ks-appbar__ref {
+  padding: 0 6px;
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: var(--radius-sm);
+  color: var(--ctp-subtext-0);
+  font: 400 12px/18px var(--font-mono);
+}
+
+.ks-appbar__search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 520px;
+  height: 30px;
+  margin-inline: auto;
+  padding: 0 var(--space-1) 0 10px;
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: var(--radius-md);
+  background: var(--ctp-base);
+  color: var(--ctp-meta);
+  font: 400 13px/20px var(--font-mono);
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.ks-appbar__search > span:not(.ks-kbd) {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ks-appbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* área dos painéis */
+.ks-panes {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-2);
+}
+
+.ks-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--ctp-surface-0);
+  border-radius: var(--radius-lg);
+  background: var(--ctp-mantle);
+}
+
+.ks-pane--side {
+  flex: 0 0 var(--side-w, 280px);
+  min-width: 180px;
+  max-width: 50%;
+}
+
+.ks-pane--main { flex: 1 1 auto; }
+
+.ks-pane__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--ctp-surface-0);
+  color: var(--ctp-meta);
+  font: 500 12px/16px var(--font-mono);
+}
+
+/* barra de status */
+.ks-appstatus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 24px;
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  border-top: 1px solid var(--ctp-surface-0);
+  background: color-mix(in srgb, var(--ctp-crust) 30%, transparent);
+  color: var(--ctp-meta);
+  font: 400 12px/16px var(--font-mono);
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+}
+
+.ks-appstatus > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ks-appstatus span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ks-appstatus .ks-icon { width: 13px; height: 13px; }
+
+/* medidor de requisições restantes */
+.ks-meter__bar {
+  width: 40px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--ctp-surface-0);
+}
+
+.ks-meter__bar > span {
+  display: block;
+  width: var(--value, 100%);
+  height: 100%;
+  background: var(--ctp-accent);
+}
+
+.ks-meter.is-low .ks-meter__bar > span { background: var(--ctp-red); }
+
+/* carregando */
+.ks-skeleton {
+  border-radius: var(--radius-sm);
+  background: var(--ctp-surface-0);
+  animation: ks-pulse 1.4s cubic-bezier(0.23, 1, 0.32, 1) infinite alternate;
+}
+
+@keyframes ks-pulse {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
+/* ---------- Árvore de arquivos ---------- */
+.ks-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-block: var(--space-1);
+  font: 400 13px/1 var(--font-mono);
+}
+
+.ks-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--row-h, 26px);
+  padding-inline: var(--space-2);
+  color: var(--ctp-subtext-1);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ks-tree__row:focus-visible { outline-offset: -2px; }
+
+.ks-tree__indent {
+  flex: none;
+  align-self: stretch;
+  width: 16px;
+  background: linear-gradient(var(--ctp-surface-0), var(--ctp-surface-0)) 7px 0 / 1px 100% no-repeat;
+}
+
+.ks-tree__chev {
+  flex: none;
+  color: var(--ctp-meta);
+  transition: rotate 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ks-tree__row[aria-expanded='true'] > .ks-tree__chev { rotate: 90deg; }
+.ks-tree__row[aria-expanded='false'] + [role='group'] { display: none; }
+
+.ks-tree__spacer { flex: none; width: 16px; }
+
+.ks-tree__icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.ks-tree__icon img,
+.ks-tree__icon svg { width: 16px; height: 16px; }
+
+.ks-tree__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-tree__meta {
+  margin-left: auto;
+  padding-left: var(--space-2);
+  color: var(--ctp-meta);
+  font-size: 11px;
+}
+
+.ks-tree__row.is-dim { color: var(--ctp-meta); }
+
+.ks-tree__row[aria-selected='true'] {
+  background: color-mix(in srgb, var(--ctp-accent) 10%, transparent);
+  color: var(--ctp-text);
+}
+
+.ks-tree__filter {
+  flex: none;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+
+.ks-tree__filter .ks-input { width: 100%; }
+
+/* ---------- Abas do editor ---------- */
+.ks-tabs {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  height: 36px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ctp-surface-0);
+  background: color-mix(in srgb, var(--ctp-crust) 30%, transparent);
+  scrollbar-width: none;
+}
+
+.ks-tab {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 6px 0 12px;
+  border-right: 1px solid var(--ctp-surface-0);
+  color: var(--ctp-subtext-0);
+  font: 400 13px/20px var(--font-mono);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ks-tab:focus-visible { outline-offset: -2px; }
+
+.ks-tab[aria-selected='true'] {
+  background: var(--ctp-mantle);
+  color: var(--ctp-text);
+}
+
+/* linha do acento em cima da aba ativa; embaixo ela se funde ao painel */
+.ks-tab[aria-selected='true']::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--ctp-accent);
+}
+
+.ks-tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 1px;
+  background: var(--ctp-mantle);
+}
+
+.ks-tab.is-preview .ks-tab__name { font-style: italic; }
+
+.ks-tab__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.ks-tab__close {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ctp-meta);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ks-tab__close .ks-icon { width: 14px; height: 14px; }
+
+.ks-tab[aria-selected='true'] .ks-tab__close,
+.ks-tab:focus-within .ks-tab__close { opacity: 1; }
+
+.ks-tab.is-pinned .ks-tab__close { opacity: 1; }
+
+/* ---------- Divisor redimensionável ---------- */
+.ks-splitter {
+  position: relative;
+  flex: none;
+  width: var(--space-2);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ks-splitter::before {
+  content: '';
+  position: absolute;
+  inset: var(--space-3) auto var(--space-3) 50%;
+  width: 2px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  translate: -50% 0;
+  transition: background-color 150ms ease;
+}
+
+.ks-splitter.is-dragging::before,
+.ks-splitter:focus-visible::before {
+  background: color-mix(in srgb, var(--ctp-accent) 60%, transparent);
+}
+
+.ks-splitter--h {
+  width: auto;
+  height: var(--space-2);
+  cursor: row-resize;
+}
+
+.ks-splitter--h::before {
+  inset: 50% var(--space-3) auto;
+  width: auto;
+  height: 2px;
+  translate: 0 -50%;
+}
+
+/* ---------- Caminho do arquivo ---------- */
+.ks-breadcrumb {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ks-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ctp-subtext-0);
+  font: 400 12px/16px var(--font-mono);
+  white-space: nowrap;
+}
+
+.ks-breadcrumb button {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ks-breadcrumb .sep { color: var(--ctp-overlay-0); }
+.ks-breadcrumb [aria-current='page'] { color: var(--ctp-text); }
+
+/* ---------- Visualizador de código ---------- */
+.ks-codeview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-block: var(--space-2);
+  background: var(--ed-bg, var(--ctp-mantle));
+  color: var(--ed-fg, var(--ctp-text));
+  font-family: var(--code-font, var(--font-mono));
+  font-size: var(--code-size, 13px);
+  font-variant-ligatures: var(--code-ligatures, normal);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--code-line, 1.6);
+  tab-size: var(--code-tab, 2);
+}
+
+.ks-line {
+  display: flex;
+  min-width: max-content;
+  padding-right: var(--space-6);
+}
+
+.ks-line__no {
+  position: sticky;
+  left: 0;
+  flex: none;
+  width: calc(var(--gutter, 3) * 1ch + 20px);
+  padding-right: 4px;
+  background: var(--ed-bg, var(--ctp-mantle));
+  color: var(--ed-gutter, var(--ctp-meta));
+  text-align: right;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ks-line__fold {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  color: var(--ctp-meta);
+  opacity: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ks-line__fold .ks-icon { width: 14px; height: 14px; }
+
+.ks-line__code {
+  white-space: pre;
+}
+
+.ks-indent {
+  display: inline-block;
+  width: calc(var(--code-tab, 2) * 1ch);
+  box-shadow: inset 1px 0 var(--ed-guide, var(--ctp-surface-0));
+}
+
+.ks-ws { color: var(--ctp-surface-2); }
+
+.ks-line.is-current { background: color-mix(in srgb, var(--ed-current-line, var(--ctp-surface-0)) 60%, transparent); }
+
+.ks-line.is-current .ks-line__no {
+  background: color-mix(in srgb, var(--ed-current-line, var(--ctp-surface-0)) 60%, var(--ed-bg, var(--ctp-mantle)));
+  color: var(--ed-fg, var(--ctp-text));
+}
+
+.ks-line.is-selected { background: color-mix(in srgb, var(--ed-selected-line, var(--ctp-accent)) 10%, transparent); }
+
+.ks-line.is-selected .ks-line__no {
+  background: color-mix(in srgb, var(--ed-selected-line, var(--ctp-accent)) 10%, var(--ed-bg, var(--ctp-mantle)));
+  box-shadow: inset -2px 0 var(--ed-selected-line, var(--ctp-accent));
+  color: var(--ed-fg, var(--ctp-text));
+}
+
+.ks-codeview.is-wrap .ks-line { min-width: 0; }
+
+.ks-codeview.is-wrap .ks-line__code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Tecla ---------- */
+.ks-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--ctp-surface-1);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--ctp-base);
+  color: var(--ctp-subtext-0);
+  font: 500 11px/1 var(--font-mono);
+  white-space: nowrap;
+}
+
+/* ---------- Paleta de comandos ---------- */
+.ks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: 12vh var(--space-4) 0;
+  background: color-mix(in srgb, var(--ctp-crust) 45%, transparent);
+}
+
+.ks-palette {
+  width: min(640px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: var(--radius-xl);
+  background: var(--ctp-mantle);
+  box-shadow: var(--ks-overlay-shadow);
+  animation: ks-pop 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ks-palette__input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--ctp-surface-0);
+  color: var(--ctp-meta);
+}
+
+.ks-palette__input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--ctp-text);
+  font: 400 15px/20px var(--font-mono);
+}
+
+.ks-palette__input input::placeholder { color: var(--ctp-meta); }
+
+.ks-palette__list {
+  max-height: min(360px, 50vh);
+  margin: 0;
+  padding: var(--space-1);
+  overflow: auto;
+  list-style: none;
+}
+
+.ks-palette__group {
+  padding: 8px 12px 4px;
+  color: var(--ctp-meta);
+  font: 500 11px/16px var(--font-mono);
+}
+
+.ks-palette__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  color: var(--ctp-subtext-1);
+  font: 400 13px/20px var(--font-mono);
+  cursor: pointer;
+}
+
+.ks-palette__item[aria-selected='true'] {
+  background: color-mix(in srgb, var(--ctp-surface-0) 60%, transparent);
+  color: var(--ctp-text);
+}
+
+.ks-palette__item mark {
+  background: none;
+  color: var(--ctp-accent);
+  font-weight: 600;
+}
+
+.ks-palette__hint {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--ctp-meta);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ks-palette__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: 8px var(--space-4);
+  border-top: 1px solid var(--ctp-surface-0);
+  color: var(--ctp-meta);
+  font: 400 11px/20px var(--font-mono);
+}
+
+.ks-palette__foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Controles (preferências) ---------- */
+.ks-input,
+.ks-select {
+  height: 32px;
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: var(--radius-md);
+  background: var(--ctp-base);
+  color: var(--ctp-text);
+  font: 400 13px/20px var(--font-mono);
+  transition: border-color 150ms ease;
+}
+
+.ks-input { box-sizing: border-box; padding: 0 10px; }
+.ks-input::placeholder { color: var(--ctp-meta); }
+
+.ks-select {
+  padding: 0 30px 0 10px;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ctp-meta) 50%), linear-gradient(135deg, var(--ctp-meta) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.ks-input:focus-visible,
+.ks-select:focus-visible {
+  border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent);
+}
+
+.ks-switch {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background: var(--ctp-surface-1);
+  appearance: none;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.ks-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--ctp-text);
+  transition: translate 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ks-switch:checked { background: var(--ctp-accent); }
+
+.ks-switch:checked::after {
+  background: var(--ctp-base);
+  translate: 14px 0;
+}
+
+.ks-range {
+  width: 160px;
+  accent-color: var(--ctp-accent);
+}
+
+.ks-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ctp-surface-0);
+  border-radius: var(--radius-md);
+  background: var(--ctp-base);
+}
+
+.ks-segmented button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ctp-subtext-0);
+  font: 400 12px/16px var(--font-mono);
+  cursor: pointer;
+}
+
+.ks-segmented button[aria-pressed='true'] {
+  background: var(--ctp-surface-0);
+  color: var(--ctp-text);
+}
+
+.ks-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--ctp-surface-0);
+}
+
+.ks-setting__label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ks-setting__label strong {
+  color: var(--ctp-text);
+  font: 500 13px/20px var(--font-mono);
+}
+
+.ks-setting__label span {
+  color: var(--ctp-subtext-0);
+  font: 400 13px/18px var(--font-sans);
+}
+
+.ks-setting__value {
+  min-width: 40px;
+  color: var(--ctp-meta);
+  font: 400 12px/16px var(--font-mono);
+  text-align: right;
+}
+
+/* ---------- Menu e dica ---------- */
+.ks-menu {
+  min-width: 220px;
+  padding: var(--space-1);
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: var(--radius-lg);
+  background: var(--ctp-mantle);
+  box-shadow: var(--ks-overlay-shadow);
+  animation: ks-pop 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ks-menu__label {
+  padding: 6px 10px 2px;
+  color: var(--ctp-meta);
+  font: 500 11px/16px var(--font-mono);
+}
+
+.ks-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ctp-subtext-1);
+  font: 400 13px/20px var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ks-menu__item:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--ctp-surface-0) 60%, transparent);
+  color: var(--ctp-text);
+}
+
+.ks-menu__item .ks-kbd { margin-left: auto; }
+
+.ks-menu__check {
+  color: var(--ctp-accent);
+  visibility: hidden;
+}
+
+.ks-menu__item[aria-checked='true'] .ks-menu__check { visibility: visible; }
+
+.ks-menu__item--danger { color: var(--ctp-red); }
+
+.ks-menu__sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--ctp-surface-0);
+}
+
+.ks-tooltip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--ctp-crust);
+  color: var(--ctp-text);
+  font: 400 12px/16px var(--font-mono);
+  white-space: nowrap;
+  box-shadow: var(--ks-overlay-shadow);
+}
+
+/* ---------- Avisos ---------- */
+.ks-toasts {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(24px + var(--space-4));
+  z-index: 60;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ks-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 260px;
+  max-width: 380px;
+  padding: 10px 12px;
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: var(--radius-lg);
+  background: var(--ctp-mantle);
+  color: var(--ctp-text);
+  font: 400 13px/20px var(--font-mono);
+  box-shadow: var(--ks-overlay-shadow);
+  animation: ks-toast-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ks-toast > .ks-icon { color: var(--ctp-accent); }
+.ks-toast--error > .ks-icon { color: var(--ctp-red); }
+
+.ks-toast__action {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ctp-text);
+  font: 500 13px/20px var(--font-mono);
+  text-decoration: underline 2px var(--ctp-accent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+@keyframes ks-pop {
+  from { opacity: 0; scale: 0.98; }
+}
+
+@keyframes ks-toast-in {
+  from { opacity: 0; translate: 0 8px; }
+}
+
+@keyframes ks-fade {
+  from { opacity: 0; }
+}
+
+/* hover só com mouse */
+@media (hover: hover) and (pointer: fine) {
+  .ks-appbar__search:hover { border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent); }
+
+  .ks-tree__row:not([aria-selected='true']):hover,
+  .ks-breadcrumb button:hover,
+  .ks-menu__item:hover {
+    background: color-mix(in srgb, var(--ctp-surface-0) 60%, transparent);
+    color: var(--ctp-text);
+  }
+
+  .ks-tab:hover { color: var(--ctp-text); }
+  .ks-tab:hover .ks-tab__close { opacity: 1; }
+
+  .ks-tab__close:hover {
+    background: color-mix(in srgb, var(--ctp-surface-0) 60%, transparent);
+    color: var(--ctp-text);
+  }
+
+  .ks-splitter:hover::before { background: color-mix(in srgb, var(--ctp-accent) 60%, transparent); }
+
+  .ks-codeview:hover .ks-line__fold { opacity: 1; }
+
+  .ks-palette__item:hover { color: var(--ctp-text); }
+
+  .ks-segmented button:not([aria-pressed='true']):hover { color: var(--ctp-text); }
+
+  .ks-input:hover,
+  .ks-select:hover { border-color: var(--ctp-surface-2); }
+}
+
+/* ---------- Ícone de arquivo (pacotes do VS Code) ---------- */
+.ks-fileicon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.ks-fileicon img,
+.ks-fileicon svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ---------- Escolha do tema do editor ---------- */
+.ks-themepick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ks-themepick button {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--ctp-surface-0);
+  border-radius: var(--radius-lg);
+  background: var(--ctp-mantle);
+  color: var(--ctp-subtext-1);
+  font: 400 12px/16px var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.ks-themepick button[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent);
+  color: var(--ctp-text);
+}
+
+.ks-themepick__sample {
+  display: block;
+  overflow: hidden;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--ed-bg);
+  color: var(--ed-fg);
+  font: 400 12px/16px var(--font-mono);
+  white-space: pre;
+}
+
+.ks-themepick__sample i:nth-of-type(1) { color: var(--s1); }
+.ks-themepick__sample i:nth-of-type(2) { color: var(--s2); }
+.ks-themepick__sample i:nth-of-type(3) { color: var(--s3); }
+.ks-themepick__sample i { font-style: normal; }
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-themepick button:not([aria-pressed='true']):hover { border-color: var(--ctp-surface-2); }
+}
+
+/* movimento reduzido: sobreposições só aparecem; nada infinito */
+@media (prefers-reduced-motion: reduce) {
+  .ks-palette,
+  .ks-menu,
+  .ks-toast { animation-name: ks-fade; }
+
+  .ks-skeleton { animation: none; }
+}
+
+/* ---------- Tecla (portfólio, 2026-11-03): mesma regra de src/styles/index.css ---------- */
+@layer components {
+  /* ---------- Botão de tecla (key) ----------
+     O botão é uma tecla: a face (::before) fica por cima da lateral (::after), que aparece embaixo.
+     Ao pressionar, o botão inteiro desce e a lateral sobe o mesmo tanto: a face afunda e a lateral
+     some, como uma keycap. Só translate anima; a descida é rápida e a volta, um pouco mais lenta.
+     Botões de alternância (aria-pressed) ficam afundados enquanto estão ligados.
+     Variantes: key--accent (principal) e key--flat (versão simples: lateral menor, sem brilho).
+     Fica na camada components para as utilidades do Tailwind (tamanho de fonte, raio, largura)
+     poderem ajustar a tecla; o respiro interno muda por --key-px e --key-py, sem perder a lateral. */
+  .key {
+    --key-depth: 4px;
+    /* temas escuros: face clara em degradê (luz de cima), lateral num tom entre a face e o
+       fundo e uma sombra curta que assenta a tecla. Com a lateral quase preta, ela sumia no
+       fundo escuro e a tecla parecia chapada. */
+    --key-face: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ctp-surface-2) 55%, var(--ctp-surface-1)),
+      var(--ctp-surface-1)
+    );
+    --key-face-hover: linear-gradient(
+      to bottom,
+      var(--ctp-surface-2),
+      color-mix(in srgb, var(--ctp-surface-2) 40%, var(--ctp-surface-1))
+    );
+    --key-edge: linear-gradient(
+      to bottom,
+      var(--ctp-surface-0),
+      color-mix(in srgb, var(--ctp-surface-0) 60%, var(--ctp-crust))
+    );
+    --key-rim: color-mix(in srgb, var(--ctp-text) 10%, transparent);
+    --key-shine: color-mix(in srgb, var(--ctp-text) 22%, transparent);
+    --key-drop: 0 2px 4px color-mix(in srgb, var(--ctp-crust) 70%, transparent);
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: var(--key-py, 8px) var(--key-px, 16px)
+      calc(var(--key-py, 8px) + var(--key-depth));
+    border-radius: var(--radius-lg, 10px);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: var(--ctp-subtext-1);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      translate 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms ease;
+  }
+
+  .key::before,
+  .key::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-radius: inherit;
+  }
+
+  /* face */
+  .key::before {
+    z-index: -1;
+    top: 0;
+    bottom: var(--key-depth);
+    background: var(--key-face);
+    border: 1px solid var(--key-rim);
+    box-shadow: inset 0 1px 0 var(--key-shine);
+  }
+
+  /* lateral */
+  .key::after {
+    z-index: -2;
+    top: var(--key-depth);
+    bottom: 0;
+    background: var(--key-edge);
+    box-shadow: var(--key-drop);
+    transition: translate 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* afundada: o clique, a tecla Espaço e as alternâncias ligadas */
+  .key:is(:active, [aria-pressed='true']):not(:disabled) {
+    translate: 0 calc(var(--key-depth) - 1px);
+    scale: none;
+  }
+
+  .key:is(:active, [aria-pressed='true']):not(:disabled)::after {
+    translate: 0 calc(1px - var(--key-depth));
+  }
+
+  .key:active:not(:disabled),
+  .key:active:not(:disabled)::after {
+    transition-duration: 60ms;
+  }
+
+  .key[aria-pressed='true'] {
+    cursor: default;
+  }
+
+  .key:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .key:not(:disabled, [aria-pressed='true']):hover {
+      color: var(--ctp-text);
+    }
+
+    .key:not(:disabled, [aria-pressed='true']):hover::before {
+      background: var(--key-face-hover);
+    }
+  }
+
+  /* principal e alternância ligada: face tingida com o destaque */
+  .key:is(.key--accent, [aria-pressed='true']) {
+    --key-face: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ctp-accent) 30%, var(--ctp-surface-1)),
+      color-mix(in srgb, var(--ctp-accent) 20%, var(--ctp-surface-1))
+    );
+    --key-face-hover: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ctp-accent) 40%, var(--ctp-surface-1)),
+      color-mix(in srgb, var(--ctp-accent) 28%, var(--ctp-surface-1))
+    );
+    --key-edge: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ctp-accent) 34%, var(--ctp-surface-0)),
+      color-mix(in srgb, var(--ctp-accent) 22%, var(--ctp-crust))
+    );
+    --key-rim: color-mix(in srgb, var(--ctp-accent) 45%, transparent);
+    --key-shine: color-mix(in srgb, var(--ctp-accent) 45%, transparent);
+    color: var(--ctp-accent);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .key.key--accent:not(:disabled):hover {
+      color: var(--ctp-accent);
+    }
+  }
+
+  /* Latte: tecla clara sobre o card, lateral cinza (o crust do Latte é mais claro que o surface) */
+  [data-theme='latte'] .key {
+    --key-drop: none;
+    --key-face: var(--ctp-base);
+    --key-face-hover: color-mix(in srgb, var(--ctp-surface-0) 45%, var(--ctp-base));
+    --key-edge: var(--ctp-surface-1);
+    --key-rim: var(--ctp-surface-1);
+    --key-shine: transparent;
+  }
+
+  [data-theme='latte'] .key:is(.key--accent, [aria-pressed='true']) {
+    --key-face: color-mix(in srgb, var(--ctp-accent) 12%, var(--ctp-base));
+    --key-face-hover: color-mix(in srgb, var(--ctp-accent) 20%, var(--ctp-base));
+    --key-edge: color-mix(in srgb, var(--ctp-accent) 45%, var(--ctp-surface-1));
+    --key-rim: color-mix(in srgb, var(--ctp-accent) 55%, transparent);
+  }
+
+  /* versão simples: mesma tecla, mais rasa e sem brilho, sobre o fundo da página */
+  .key.key--flat {
+    --key-depth: 3px;
+    --key-drop: none;
+    --key-face: var(--ctp-base);
+    --key-face-hover: var(--ctp-mantle);
+    --key-edge: var(--ctp-surface-1);
+    --key-rim: var(--ctp-surface-1);
+    --key-shine: transparent;
+  }
+
+  .key.key--flat:is(.key--accent, [aria-pressed='true']) {
+    --key-face: color-mix(in srgb, var(--ctp-accent) 10%, var(--ctp-base));
+    --key-face-hover: color-mix(in srgb, var(--ctp-accent) 18%, var(--ctp-base));
+    --key-edge: color-mix(in srgb, var(--ctp-accent) 40%, var(--ctp-surface-1));
+    --key-rim: color-mix(in srgb, var(--ctp-accent) 50%, transparent);
+  }
+}

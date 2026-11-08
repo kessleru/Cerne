@@ -1,0 +1,9 @@
+node_modules
+dist
+*.tsbuildinfo
+.vite
+coverage
+.env*
+
+# notas internas dos agentes (caminhos locais)
+docs/

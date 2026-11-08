@@ -1,0 +1,292 @@
+/* Kessleru — generated from tokens.json */
+:root, [data-theme="mocha"] {
+  --ctp-rosewater: #f5e0dc; /* Cor de destaque opcional. No Latte (2,4:1) não serve para texto: só para fundo tingido, borda ou ícone. */
+  --ctp-flamingo: #f2cdcd; /* Cor de destaque opcional. No Latte (2,7:1) não serve para texto. */
+  --ctp-pink: #f5c2e7; /* Colchete de 2º nível no código (bracket pair). Cor de destaque opcional; no Latte (2,4:1) não serve para texto. Bochechas e corações do Kess. */
+  --ctp-mauve: #cba6f7; /* Palavra-chave no código (const). Cor de destaque opcional; uma das poucas que passam 4,5:1 como texto no Latte (4,9:1). */
+  --ctp-red: #f38ba8; /* Erro e ação destrutiva; primeira bolinha da barra de título. Passa 4,5:1 como texto nos 4 temas (Latte 4,9:1). */
+  --ctp-maroon: #eba0ac; /* Cor de destaque opcional. No Latte (3,5:1) só para texto grande. */
+  --ctp-peach: #fab387; /* Números no código; badge de HTML. Cor de destaque opcional; no Latte (2,7:1) não serve para texto. */
+  --ctp-yellow: #f9e2af; /* Colchete de 1º nível no código; segunda bolinha da barra de título; badge de JavaScript. No Latte (2,4:1) não serve para texto. */
+  --ctp-green: #a6e3a1; /* Cor de destaque PADRÃO (ver ctp-accent); strings no código; terceira bolinha da barra de título. No Latte o verde como texto fica em 3,0:1: só texto grande. */
+  --ctp-teal: #94e2d5; /* Badge de Tailwind CSS. Cor de destaque opcional; no Latte (3,4:1) só texto grande. */
+  --ctp-sky: #89dceb; /* Operador = no código; badge de React. No Latte (2,5:1) não serve para texto. */
+  --ctp-sapphire: #74c7ec; /* Colchete de 3º nível no código; badge de CSS. No Latte (2,8:1) não serve para texto. */
+  --ctp-blue: #89b4fa; /* Badge de TypeScript; links do shadcn (primary). No Latte fica em 4,4:1: quase passa, use em texto de 16px ou mais. */
+  --ctp-lavender: #b4befe; /* Chaves de objeto no código (nome:); anel de foco do shadcn. No Latte (2,9:1) não serve para texto. */
+  --ctp-accent: var(--ctp-green); /* A cor de destaque escolhida pela pessoa (14 opções, padrão ctp-green). Use SEMPRE este token, nunca uma cor fixa: cursor do caminho, ~ e nome em destaque, botão principal, aba do card, sublinhado do menu, foco e seleção. */
+  --ctp-text: #cdd6f4; /* Texto principal (títulos, nomes, valores) sobre ctp-base e ctp-mantle. 6,2:1 ou mais nos 4 temas. */
+  --ctp-subtext-1: #bac2de; /* Texto corrido (prose-text) e descrições sobre ctp-base e ctp-mantle; texto do botão secundário. 4,9:1 ou mais nos 4 temas. */
+  --ctp-subtext-0: #a6adc8; /* Texto de apoio (lugar, legenda, item de menu da versão simples) sobre ctp-base e ctp-mantle. 5,4:1 ou mais. No Latte o site troca o valor original do Catppuccin (#6c6f85) por #5f627a para passar. */
+  --ctp-meta: var(--ctp-overlay-2); /* Metadados pequenos: datas, contagens, rótulos, título da janela, barra de status, ícones sociais em repouso. Só sobre ctp-base e ctp-mantle (4,5:1 ou mais nos 4 temas; Frappé no limite, 4,5:1 sobre base). Sobre ctp-surface-0 não passa no Frappé (3,5:1); evite em todos os temas. */
+  --ctp-overlay-2: #9399b2; /* Pontuação no código. Não use em texto pequeno no Latte (3,6:1); para metadados use ctp-meta. */
+  --ctp-overlay-1: #7f849c; /* Só decoração (poeira do Kess). Nunca em texto: fica abaixo de 4,5:1 nos 4 temas (máx. 4,4:1 no Mocha; 2,9:1 no Latte). */
+  --ctp-overlay-0: #6c7086; /* Separador | do menu e bordas sutis. Nunca em texto: fica entre 2,4:1 (Latte) e 3,4:1 (Mocha). */
+  --ctp-surface-2: #585b70; /* Sublinhado de link em repouso (decoration); fio de divisória mais forte. */
+  --ctp-surface-1: #45475a; /* Borda do botão secundário, dos chips e do + − do Toggle. */
+  --ctp-surface-0: #313244; /* Divisórias e bordas da versão simples e do minicurso; fundo do botão de tema ativo. Não é fundo de texto pequeno. */
+  --ctp-base: #1e1e2e; /* Fundo da página (todas as superfícies). */
+  --ctp-mantle: #1c1c2b; /* Fundo dos cards, do header, do rodapé, do balão do Kess e dos blocos de código. */
+  --ctp-crust: #181825; /* Aba do card (fundo), barra de título e de status (a 30%), borda do card (a 20%). */
+  --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* Só nas superfícies de editor da versão completa: card, header, rodapé. A versão simples e o minicurso não têm sombra. */
+  --shadow-bubble: 0 6px 16px rgba(0, 0, 0, 0.22); /* Balão de fala do Kess. */
+}
+[data-theme="macchiato"] {
+  --ctp-rosewater: #f4dbd6;
+  --ctp-flamingo: #f0c6c6;
+  --ctp-pink: #f5bde6;
+  --ctp-mauve: #c6a0f6;
+  --ctp-red: #ed8796;
+  --ctp-maroon: #ee99a0;
+  --ctp-peach: #f5a97f;
+  --ctp-yellow: #eed49f;
+  --ctp-green: #a6da95;
+  --ctp-teal: #8bd5ca;
+  --ctp-sky: #91d7e3;
+  --ctp-sapphire: #7dc4e4;
+  --ctp-blue: #8aadf4;
+  --ctp-lavender: #b7bdf8;
+  --ctp-accent: var(--ctp-green);
+  --ctp-text: #cad3f5;
+  --ctp-subtext-1: #b8c0e0;
+  --ctp-subtext-0: #a5adcb;
+  --ctp-meta: var(--ctp-overlay-2);
+  --ctp-overlay-2: #939ab7;
+  --ctp-overlay-1: #8087a2;
+  --ctp-overlay-0: #6e738d;
+  --ctp-surface-2: #5b6078;
+  --ctp-surface-1: #494d64;
+  --ctp-surface-0: #363a4f;
+  --ctp-base: #24273a;
+  --ctp-mantle: #1e2030;
+  --ctp-crust: #181926;
+}
+[data-theme="frappe"] {
+  --ctp-rosewater: #f2d5cf;
+  --ctp-flamingo: #eebebe;
+  --ctp-pink: #f4b8e4;
+  --ctp-mauve: #ca9ee6;
+  --ctp-red: #e78284;
+  --ctp-maroon: #ea999c;
+  --ctp-peach: #ef9f76;
+  --ctp-yellow: #e5c890;
+  --ctp-green: #a6d189;
+  --ctp-teal: #81c8be;
+  --ctp-sky: #99d1db;
+  --ctp-sapphire: #85c1dc;
+  --ctp-blue: #8caaee;
+  --ctp-lavender: #babbf1;
+  --ctp-accent: var(--ctp-green);
+  --ctp-text: #c6d0f5;
+  --ctp-subtext-1: #b5bfe2;
+  --ctp-subtext-0: #a5adce;
+  --ctp-meta: var(--ctp-overlay-2);
+  --ctp-overlay-2: #949cbb;
+  --ctp-overlay-1: #838ba7;
+  --ctp-overlay-0: #737994;
+  --ctp-surface-2: #626880;
+  --ctp-surface-1: #51576d;
+  --ctp-surface-0: #414559;
+  --ctp-base: #303446;
+  --ctp-mantle: #292c3c;
+  --ctp-crust: #232634;
+}
+[data-theme="latte"] {
+  --ctp-rosewater: #dc8a78;
+  --ctp-flamingo: #dd7878;
+  --ctp-pink: #ea76cb;
+  --ctp-mauve: #8839ef;
+  --ctp-red: #d20f39;
+  --ctp-maroon: #e64553;
+  --ctp-peach: #fe640b;
+  --ctp-yellow: #df8e1d;
+  --ctp-green: #40a02b;
+  --ctp-teal: #179299;
+  --ctp-sky: #04a5e5;
+  --ctp-sapphire: #209fb5;
+  --ctp-blue: #1e66f5;
+  --ctp-lavender: #7287fd;
+  --ctp-accent: var(--ctp-green);
+  --ctp-text: #4c4f69;
+  --ctp-subtext-1: #5c5f77;
+  --ctp-subtext-0: #5f627a;
+  --ctp-meta: #5f627a;
+  --ctp-overlay-2: #7c7f93;
+  --ctp-overlay-1: #8c8fa1;
+  --ctp-overlay-0: #9ca0b0;
+  --ctp-surface-2: #c6c1b5;
+  --ctp-surface-1: #d8d4ca;
+  --ctp-surface-0: #e7e4dc;
+  --ctp-base: #f5f3ee;
+  --ctp-mantle: #fdfcf9;
+  --ctp-crust: #e9e6de;
+}
+:root {
+  --space-1: 4px; /* Respiro mínimo: aba do card (py), chips (py). */
+  --space-2: 8px; /* Gap entre botões de tema, chips e ícones; padding vertical dos botões. */
+  --space-3: 12px; /* Gap entre botões de ação (Baixar CV, Versão simples); padding das barras de título. */
+  --space-4: 16px; /* Padding do card; padding horizontal dos botões; gutter do container no celular. */
+  --space-5: 20px; /* Gutter da coluna simples no celular; gap entre links do rodapé simples. */
+  --space-6: 24px; /* Gap da grade de cards; gutter do container a partir de 640px; gap do menu simples. */
+  --space-8: 32px; /* Gutter do container a partir de 1024px e da coluna simples a partir de 640px; espaço do header até o conteúdo (completa, celular). */
+  --space-10: 40px; /* Gap entre as duas colunas do topo da página inicial completa. */
+  --space-12: 48px; /* Respiro vertical do main na versão simples (celular). */
+  --space-14: 56px; /* Entre seções da página inicial completa (celular). */
+  --space-16: 64px; /* Entre seções (completa, desktop; simples e minicurso); padding vertical da seção do minicurso. */
+  --radius-sm: 6px; /* Detalhes pequenos (o + − do Toggle: 4px no minicurso). */
+  --radius-md: 8px; /* Botões de tema, chips, ícones sociais, botão de copiar, miniaturas. */
+  --radius-lg: 10px; /* Card, header, rodapé, botões de ação, balão do Kess (o --radius do site). */
+  --radius-xl: 14px; /* Bloco de código e cards de trilha do minicurso. */
+  --radius-full: 9999px; /* Bolinhas da barra de título, amostras de cor de destaque, barra de rolagem. */
+  --border-card: 2px; /* Versão completa: card (ctp-crust a 20%), header, botões de ação e balão do Kess. */
+  --border-hairline: 1px; /* Versão simples e minicurso: divisórias, botões, chips e blocos (ctp-surface-0 ou ctp-surface-1). */
+  --alpha-tint: 0.1; /* Fundo do botão principal: ctp-accent a 10%. */
+  --alpha-tint-hover: 0.2; /* Fundo do botão principal no hover: ctp-accent a 20%. */
+  --alpha-card-border: 0.2; /* Borda do card: ctp-crust a 20%. */
+  --alpha-bar: 0.3; /* Barra de título e de status: ctp-crust a 30% (borda a 40%). */
+  --alpha-selection: 0.45; /* Seleção de texto: ctp-accent a 45%. */
+  --alpha-border-accent: 0.6; /* Borda do botão principal e hover dos secundários: ctp-accent a 60%. */
+  --alpha-focus: 0.8; /* Anel de foco: 2px de ctp-accent a 80%, afastado 2px. */
+  --container-max: 1600px; /* Largura máxima da versão completa (gutters 16/24/32px). */
+  --column-simple: 46rem; /* Coluna única da versão simples (gutters 20/32px). */
+  --measure-prose: 65ch; /* Largura máxima de parágrafo (prose-text). */
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, 'DejaVu Sans Mono', monospace;
+  --font-sans: 'Roboto', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; /* Decisão 2026-11-02: Roboto é a fonte de texto (parágrafos e títulos das superfícies de leitura). */
+  --font-roboto: 'Roboto', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --text-editor-hero: 700 30px/36px var(--font-mono); /* h1 da página inicial completa; 24px/32px no celular. "> " e o nome no acento. */
+  --text-editor-page-title: 700 24px/32px var(--font-mono); /* h1 das outras páginas completas; 20px/28px no celular. */
+  --text-editor-card-title: 700 18px/28px var(--font-mono); /* Título dentro de um card. */
+  --text-editor-ui: 500 14px/20px var(--font-mono); /* Menu, botões, links de card, rótulos de seção dentro do card (600). */
+  --text-editor-code: 400 14px/1.625 var(--font-mono); /* Código no Profile.tsx e linhas numeradas; 12px no celular. */
+  --text-editor-label: 500 12px/16px var(--font-mono); /* Aba do card, chips de tecnologia, botões de tema, datas. */
+  --text-editor-status: 400 12px/16px var(--font-mono); /* Barra de título e barra de status (ctp-meta); 10px no celular. */
+  --text-simple-hero: 600 48px/1 var(--font-roboto); /* h1 da versão simples e do minicurso; 36px no celular (minicurso: 36→48px, duas linhas com o fim no acento). */
+  --text-section-title: 600 30px/36px var(--font-roboto); /* h2 de seção no minicurso; 24px/32px no celular. */
+  --text-lead: 400 18px/28px var(--font-roboto); /* Linha logo abaixo do h1 simples (cargo em ctp-accent 500, resto em ctp-subtext-0). */
+  --text-prose: 400 17px/1.7 var(--font-roboto); /* prose-text: todo parágrafo, nas 3 superfícies. ctp-subtext-1, 65ch no máximo, 16px no celular; strong em ctp-text 600. */
+  --text-item-title: 500 16px/24px var(--font-roboto); /* Título de item de lista (cargo, link card) na versão simples. */
+  --text-body-sm: 400 14px/20px var(--font-roboto); /* Linha de apoio de item, rodapé simples, legenda de foto (ctp-subtext-0). */
+  --text-project-description: 400 15px/1.625 var(--font-roboto); /* Descrição de projeto (ctp-subtext-1), dentro do card e na lista simples. */
+  --text-mono-label: 500 12px/16px var(--font-mono); /* Título de seção da versão simples (com fio até a borda), rótulo numerado do minicurso, datas (tabular-nums), chips. Sempre ctp-meta. */
+  --text-code-block: 400 13px/24px var(--font-mono); /* Bloco de código do minicurso e da versão simples. */
+  --text-logo: 600 14px/20px var(--font-mono); /* Logo em texto do header simples e do minicurso ("minicurso/ci"): segunda parte em ctp-accent. */
+}
+.editor-hero {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.editor-page-title {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.editor-card-title {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.editor-ui {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.editor-code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.625;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.editor-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.editor-status {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+}
+.simple-hero {
+  font-family: var(--font-roboto);
+  font-size: 48px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.section-title {
+  font-family: var(--font-roboto);
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.lead {
+  font-family: var(--font-roboto);
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.prose {
+  font-family: var(--font-roboto);
+  font-size: 17px;
+  line-height: 1.7;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.item-title {
+  font-family: var(--font-roboto);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.body-sm {
+  font-family: var(--font-roboto);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.project-description {
+  font-family: var(--font-roboto);
+  font-size: 15px;
+  line-height: 1.625;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.logo {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}

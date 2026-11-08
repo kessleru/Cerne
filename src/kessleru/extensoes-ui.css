@@ -1,0 +1,254 @@
+/* Extensões de interface do protótipo (tarefa A). Só classes ks-* e tokens do Kessleru.
+   Entra depois de bundle.css e extensoes.css para ajustar o que o sistema já define. */
+
+/* ---------- Carregamento: quatro blocos de commit ---------- */
+.ks-commitloader {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ks-commitloader__box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--ctp-surface-0);
+}
+
+.ks-commitloader.is-sm .ks-commitloader__box { width: 8px; height: 8px; }
+
+.ks-commitloader.is-md .ks-commitloader__box { width: 12px; height: 12px; }
+
+.ks-commitloader__fill {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: ks-commit-lit-1 1600ms cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+
+.ks-commitloader__fill.is-1 {
+  background: color-mix(in srgb, var(--ctp-accent) 25%, transparent);
+}
+
+.ks-commitloader__fill.is-2 {
+  background: color-mix(in srgb, var(--ctp-accent) 50%, transparent);
+  animation-name: ks-commit-lit-2;
+}
+
+.ks-commitloader__fill.is-3 {
+  background: color-mix(in srgb, var(--ctp-accent) 75%, transparent);
+  animation-name: ks-commit-lit-3;
+}
+
+.ks-commitloader__fill.is-4 {
+  background: var(--ctp-accent);
+  animation-name: ks-commit-lit-4;
+}
+
+/* um bloco acende a cada 150 ms (0 a 600 ms); os quatro apagam juntos de 1400 a 1600 ms.
+   Quatro keyframes irmãs, com a mesma duração: com animation-delay o laço se desalinharia na segunda volta. */
+@keyframes ks-commit-lit-1 {
+  0% { opacity: 0; }
+  9.375% { opacity: 1; }
+  87.5% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes ks-commit-lit-2 {
+  0%, 9.375% { opacity: 0; }
+  18.75% { opacity: 1; }
+  87.5% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes ks-commit-lit-3 {
+  0%, 18.75% { opacity: 0; }
+  28.125% { opacity: 1; }
+  87.5% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes ks-commit-lit-4 {
+  0%, 28.125% { opacity: 0; }
+  37.5% { opacity: 1; }
+  87.5% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes ks-commit-breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ks-commitloader__fill { animation: none; opacity: 1; }
+  .ks-commitloader { animation: ks-commit-breathe 3200ms var(--ease-in-out) infinite; }
+}
+
+:root[data-motion='reduce'] .ks-commitloader__fill { animation: none; opacity: 1; }
+
+:root[data-motion='reduce'] .ks-commitloader { animation: ks-commit-breathe 3200ms var(--ease-in-out) infinite; }
+
+/* o título do painel em carregamento fica menor e apagado */
+.ks-panestate.is-loading .ks-panestate__title {
+  color: var(--ctp-meta);
+  font-size: 12px;
+}
+
+/* ---------- Barra de rolagem ---------- */
+.ks-app ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.ks-app ::-webkit-scrollbar-track,
+.ks-app ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.ks-app ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--ctp-surface-1);
+  background-clip: content-box;
+}
+
+.ks-app ::-webkit-scrollbar-thumb:hover {
+  background: var(--ctp-surface-2);
+  background-clip: content-box;
+}
+
+/* navegadores sem ::-webkit-scrollbar */
+@supports not selector(::-webkit-scrollbar) {
+  .ks-app :where(*) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ctp-surface-1) transparent;
+  }
+
+  .ks-app :where(*):hover {
+    scrollbar-color: var(--ctp-surface-2) transparent;
+  }
+}
+
+/* ---------- Divisor ---------- */
+.ks-splitter::before {
+  width: 1px;
+  background: var(--ctp-surface-0);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.ks-splitter--h::before {
+  width: auto;
+  height: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-splitter:hover::before { background: var(--ctp-surface-2); }
+}
+
+.ks-splitter:focus-visible::before { background: var(--ctp-surface-2); }
+
+.ks-splitter.is-dragging::before {
+  width: 2px;
+  background: var(--ctp-accent);
+}
+
+.ks-splitter--h.is-dragging::before {
+  width: auto;
+  height: 2px;
+}
+
+/* ---------- Dica ---------- */
+.ks-tooltip--float {
+  position: fixed;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100vw - 2 * var(--space-4));
+  translate: -50% 0;
+  pointer-events: none;
+  animation: ks-tip-in var(--dur-fast) var(--ease-out);
+}
+
+.ks-tooltip--float > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes ks-tip-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+/* ---------- Lista suspensa ---------- */
+.ks-selectbox {
+  position: relative;
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 260px;
+}
+
+button.ks-select {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ks-select__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-select__list {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 5;
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100vw - 2 * var(--space-4));
+  max-height: 260px;
+  margin: 0;
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  overflow: auto;
+  animation: ks-select-in var(--dur-fast) var(--ease-out);
+}
+
+.ks-select__opt {
+  height: auto;
+  padding: var(--space-1) var(--space-2);
+}
+
+.ks-select__opt[data-active='true'] {
+  background: color-mix(in srgb, var(--ctp-surface-0) 60%, transparent);
+  color: var(--ctp-text);
+}
+
+.ks-select__opt .ks-menu__check { margin-left: auto; }
+
+.ks-select__opt[aria-selected='true'] .ks-menu__check { visibility: visible; }
+
+@keyframes ks-select-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+/* ---------- Abas: fechar só no hover ou no foco; a ativa mostra sempre ---------- */
+.ks-tab.is-pinned .ks-tab__close { opacity: 0; }
+
+.ks-tab.is-pinned[aria-selected='true'] .ks-tab__close,
+.ks-tab.is-pinned:focus-within .ks-tab__close { opacity: 1; }
+
+@media (hover: hover) and (pointer: fine) {
+  .ks-tab.is-pinned:hover .ks-tab__close { opacity: 1; }
+}
