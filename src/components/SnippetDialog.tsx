@@ -175,6 +175,13 @@ export function SnippetDialog({ path, lines, range, onClose, origin }: { path: s
           <div>
             <h2 id="snip-titulo">Imagem do trecho</h2>
             <p className="ks-snip__file">{path} <span>{range.from === range.to ? `linha ${range.from}` : `linhas ${range.from} a ${range.to}`}</span></p>
+            <p className="ks-snip__hint">
+              {range.from === range.to ? (
+                <>Clique no número de uma linha e use <kbd className="ks-kbd">Shift</kbd> + clique em outra para escolher o trecho.</>
+              ) : (
+                <><kbd className="ks-kbd">Shift</kbd> + clique no número muda o fim do trecho.</>
+              )}
+            </p>
           </div>
           <button ref={closeBtn} type="button" className="ks-icon-btn" aria-label="Fechar" onClick={onClose}>
             <Icon name="x" />
