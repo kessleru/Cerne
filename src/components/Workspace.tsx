@@ -326,7 +326,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
     add('pin', 'Arquivo', 'Fixar ou soltar a aba atual', () => active && pinTab(active));
     add('close', 'Arquivo', 'Fechar a aba atual', () => active && closeTab(active), ['Ctrl', 'W']);
     add('ref', 'Repositório', 'Trocar ramo, tag ou commit...', () => setRefOpen(true));
-    add('exit', 'Repositório', 'Voltar ao início', onExit);
+    add('exit', 'Repositório', 'Voltar ao início', onExit, ['Alt', 'Home']);
     for (const t of THEMES) add('tema-' + t.id, 'Tema', `Tema da página: ${t.label}`, () => setPref({ theme: t.id }));
     for (const a of ACCENTS) add('acento-' + a, 'Tema', `Cor de destaque: ${a}`, () => setPref({ accent: a }));
     add('ed-sys', 'Tema do editor', 'Tema do editor: igual à interface', () => prefsStore.set({ editorTheme: null }));
@@ -368,13 +368,14 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
       else if (e.altKey && k === 'i') openSnippet();
       else if (e.altKey && k === 'h') openHistory(active);
       else if (e.altKey && k === 'd' && active && commits[0]) openDiff(commits[0], active);
+      else if (e.altKey && k === 'home') onExit();
       else if (e.key === 'Escape' && demo) clearDemo();
       else return;
       e.preventDefault();
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [active, lines, view, tabs, narrow, prefs.wrap, commits, demo, copyLink, openSnippet, openHistory, openDiff, closeTab, clearDemo]);
+  }, [active, lines, view, tabs, narrow, prefs.wrap, commits, demo, copyLink, openSnippet, openHistory, openDiff, closeTab, clearDemo, onExit]);
 
   const onFile = useCallback((f: { file: FileContent; lines: string[] | null } | null) => setActiveFile(f), []);
   const onFirstReadline = readlineDone.current ? false : true;
@@ -529,6 +530,9 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
   return (
     <div className="ks-app" data-density={prefs.density} style={codeStyle(prefs) as CSSProperties}>
       <header className="ks-appbar">
+        <button type="button" className="ks-icon-btn ks-appbar__home" aria-label="Voltar ao início" data-tip="Voltar ao início" data-tip-key="Alt Home" onClick={onExit}>
+          <Icon name="home" />
+        </button>
         {narrow && (
           <button type="button" className="ks-icon-btn" aria-label="Arquivos" aria-expanded={drawer} data-tip="Arquivos" onClick={() => setDrawer((d) => !d)}>
             <Icon name="panelLeft" />

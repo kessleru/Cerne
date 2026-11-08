@@ -252,3 +252,10 @@ button.ks-select {
 @media (hover: hover) and (pointer: fine) {
   .ks-tab.is-pinned:hover .ks-tab__close { opacity: 1; }
 }
+
+/* O retorno ao início fica junto do repositório, com o mesmo respiro dos botões de ação. */
+.ks-appbar__home + .ks-appbar__repo { margin-left: calc(var(--space-1) - var(--space-3)); }
+
+@media (max-width: 719px) {
+  .ks-appbar__home + .ks-icon-btn { margin-left: calc(var(--space-1) - var(--space-2)); }
+}
