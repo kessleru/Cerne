@@ -55,4 +55,10 @@ export function contarLinhas(texto: string): number {
   return n;
 }
 
-export const codificarCaminho = (p: string) => p.split('/').map(encodeURIComponent).join('/');
+/** Codifica ramo ou caminho para a URL. Recusa `.`, `..` e trechos vazios: o navegador resolve
+ *  `..` (mesmo como `%2E%2E`) e a chamada, com o token, iria para outro endpoint da API. */
+export function codificarCaminho(p: string): string {
+  const partes = p.split('/');
+  if (partes.some((s) => s === '' || s === '.' || s === '..')) throw new Error('Caminho inválido.');
+  return partes.map(encodeURIComponent).join('/');
+}
