@@ -558,3 +558,28 @@ button.ks-appbar__ref { display: inline-flex; align-items: center; gap: var(--sp
 
 .ks-snip .ks-selectbox { display: block; max-width: none; }
 .ks-snip .ks-select__btn { width: 100%; }
+
+/* Tecla: a regra decidida no Kessleru (2026-11-03) vale em todos os temas: face lisa, borda de 1px e
+   lateral na cor da borda, sem degradê, brilho nem sombra. O bundle do cofre ainda traz o degradê nos
+   temas escuros; aqui ele é anulado. Base: Componentes/Kessleru - Button.md, "A tecla". */
+:root:not([data-theme='latte']) .key {
+  --key-face: var(--ctp-surface-0);
+  --key-face-hover: color-mix(in srgb, var(--ctp-surface-1) 45%, var(--ctp-surface-0));
+  --key-edge: var(--ctp-surface-1);
+  --key-rim: var(--ctp-surface-1);
+  --key-shine: transparent;
+  --key-drop: none;
+}
+:root:not([data-theme='latte']) .key:is(.key--accent, [aria-pressed='true']) {
+  --key-face: color-mix(in srgb, var(--ctp-accent) 14%, var(--ctp-surface-0));
+  --key-face-hover: color-mix(in srgb, var(--ctp-accent) 20%, var(--ctp-surface-0));
+  --key-edge: color-mix(in srgb, var(--ctp-accent) 50%, var(--ctp-surface-1));
+  --key-rim: color-mix(in srgb, var(--ctp-accent) 50%, var(--ctp-surface-1));
+}
+/* toda tecla do app com a mesma tipografia e sem o estilo nativo do botão (o sabor já fazia isso) */
+:is(.ks-app, .ks-entry, .ks-prefs, .ks-snip, .ks-panestate) .key {
+  border: 0;
+  background: none;
+  font: 500 13px/20px var(--font-mono);
+  white-space: nowrap;
+}

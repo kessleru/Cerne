@@ -19,4 +19,12 @@ export class ArmazenamentoMemoria implements Armazenamento {
   async clearPrefix(prefix: string): Promise<void> {
     for (const k of [...this.map.keys()]) if (k.startsWith(prefix)) this.map.delete(k);
   }
+
+  async clearExceptPrefixes(manter: string[]): Promise<void> {
+    for (const k of [...this.map.keys()]) if (!manter.some((p) => k.startsWith(p))) this.map.delete(k);
+  }
+
+  async clearAll(): Promise<void> {
+    this.map.clear();
+  }
 }

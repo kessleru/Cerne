@@ -8,6 +8,7 @@ import {
 } from '../state/prefs';
 import { clearToken, getToken, saveToken, subscribeToken } from '../state/token';
 import { importThemeJson, importedStore, removeImportedTheme, useEditorThemes } from '../state/themes';
+import { source } from '../data/source';
 import { Icon } from './Icon';
 import { Select } from './Select';
 import { ThemeCard } from './ThemeCard';
@@ -127,6 +128,7 @@ export function Preferences({ onClose, origin, section }: { onClose: () => void;
   };
 
   const clearAll = () => {
+    void source.apagarCache();
     try {
       for (const k of Object.keys(localStorage)) if (k.startsWith('cerne:')) localStorage.removeItem(k);
       for (const k of Object.keys(sessionStorage)) if (k.startsWith('cerne:')) sessionStorage.removeItem(k);

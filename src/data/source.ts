@@ -65,6 +65,11 @@ class SeletorDeFonte implements RepoSource {
     };
   }
 
+  /** Apaga o cache de dados do GitHub: o banco `cerne-cache` inteiro e a memória. */
+  apagarCache(): Promise<void> {
+    return this.github.apagarCache();
+  }
+
   /** Só o comando de demonstração "cota esgotada" usa: mexe na cota do repositório falso. */
   setRemaining(remaining: number) {
     mock.setRemaining(remaining);

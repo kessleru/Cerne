@@ -2,7 +2,7 @@
 // Regras de custo: tudo que tem SHA vai para o cache e nunca é buscado de novo; sem token, o resto
 // vale por 10 minutos (um 304 anônimo gasta cota); com token, revalida por If-None-Match (304 é grátis).
 import { getToken, subscribeToken } from '../../state/token';
-import { criarArmazenamento, prefixoDoToken, vigiarToken, type Armazenamento } from '../cache';
+import { criarArmazenamento, PREFIXO_ANONIMO, prefixoDoToken, vigiarToken, type Armazenamento } from '../cache';
 import type { Commit, FileContent, Quota, Ref, RepoInfo, RepoSource, Tree, TreeEntry } from '../types';
 import { ACEITA_RAW, ACEITA_SHA, API, chamarApi, chamarRaw, RAW } from './api';
 import { codificarCaminho, contarLinhas, ehImagemRaster, LIMITE_GRANDE, lerPonteiroLfs, pareceBinario, tipoDoArquivo } from './arquivos';
@@ -14,6 +14,10 @@ const TTL_SHA = 60_000;
 const PAGINAS_REFS = 3;
 const POR_PAGINA = 100;
 const SHA_COMPLETO = /^[0-9a-f]{40}$/i;
+const SLUG_VALIDO = /^[\w.-]+\/[\w.-]+$/;
+const nomeSeguro = (s: string) => s !== '.' && s !== '..';
+/** `dono/repo` já validado, com cada parte codificada para entrar em URL. */
+const slugUrl = (slug: string) => slug.split('/').map(encodeURIComponent).join('/');
 
 type Registro<T> = { t: number; etag?: string; data: T };
 type Ctx = Omit<Contexto, 'temToken'>;
@@ -36,13 +40,14 @@ export class GitHubSource implements RepoSource {
   private flight = new Map<string, Promise<unknown>>();
   private shaMem = new Map<string, { sha: string; t: number }>();
   private defaults = new Map<string, string>();
-  private treeMem = new Map<string, Map<string, TreeEntry>>();
+  private treeMem = new Map<string, Map<string, TreeEntry>>(); // `slug@sha`
   private dirSha = new Map<string, string>();
-  private pais = new Map<string, string | null>();
+  private pais = new Map<string, string | null>(); // `slug@sha`
   private cotaIniciada = false;
 
-  constructor(store: Armazenamento = criarArmazenamento()) {
+  constructor(store: Armazenamento = criarArmazenamento(() => getToken().remembered)) {
     this.store = store;
+    void this.limparPrefixosAntigos();
     // token que sai ou muda: apaga o cache dele e relê a cota (o limite muda de 60 para 5 000)
     vigiarToken(store, () => getToken().value, subscribeToken, () => void this.atualizarCota());
   }
@@ -69,6 +74,28 @@ export class GitHubSource implements RepoSource {
     } catch {
       /* sem rede ou token inválido: o erro aparece na primeira chamada de verdade */
     }
+  }
+
+  /** Ao iniciar: o que sobrou de outros tokens (ou de token só da sessão) no disco é apagado; ficam `anon|` e o token lembrado. */
+  private async limparPrefixosAntigos() {
+    try {
+      const { value, remembered } = getToken();
+      const manter = [`${PREFIXO_ANONIMO}|`];
+      if (value && remembered) manter.push(`${await prefixoDoToken(value)}|`);
+      await this.store.clearExceptPrefixes(manter);
+    } catch {
+      /* sem limpeza, o cache só fica maior */
+    }
+  }
+
+  /** Apaga todo o cache de dados (o banco `cerne-cache` inteiro e a memória). */
+  async apagarCache(): Promise<void> {
+    await this.store.clearAll();
+    this.shaMem.clear();
+    this.treeMem.clear();
+    this.dirSha.clear();
+    this.pais.clear();
+    this.defaults.clear();
   }
 
   // ---------- infraestrutura de cache ----------
@@ -129,16 +156,20 @@ export class GitHubSource implements RepoSource {
 
   // ---------- repositório e refs ----------
   getRepo(owner: string, name: string): Promise<RepoInfo> {
+    const slug = `${owner}/${name}`;
+    if (!SLUG_VALIDO.test(slug) || !nomeSeguro(owner) || !nomeSeguro(name)) {
+      return Promise.reject(new GitHubError('nao-encontrado', 'Endereço de repositório inválido.'));
+    }
     // define o repositório de forma síncrona: listRefs e getTree chegam logo depois, na mesma rodada
     this.owner = owner;
     this.name = name;
-    return this.infoDoRepo(`${owner}/${name}`);
+    return this.infoDoRepo(slug);
   }
 
   private async infoDoRepo(slug: string): Promise<RepoInfo> {
     const j = await this.mutavel<{ name?: string; owner?: { login?: string }; description?: string | null; default_branch?: string }>(
       `repo:${slug}`,
-      `${API}/repos/${slug}`,
+      `${API}/repos/${slugUrl(slug)}`,
       { ctx: { oque: 'repo' } },
     );
     const [owner = '', name = ''] = slug.split('/');
@@ -157,7 +188,7 @@ export class GitHubSource implements RepoSource {
     for (let pagina = 1; pagina <= PAGINAS_REFS; pagina++) {
       const itens = await this.mutavel<ApiRef[]>(
         `refs:${slug}:${tipo}:${pagina}`,
-        `${API}/repos/${slug}/${tipo}?per_page=${POR_PAGINA}&page=${pagina}`,
+        `${API}/repos/${slugUrl(slug)}/${tipo}?per_page=${POR_PAGINA}&page=${pagina}`,
         { ctx: { oque: 'repo' } },
       );
       for (const r of itens) out.push({ name: r.name, kind, sha: r.commit.sha });
@@ -202,7 +233,7 @@ export class GitHubSource implements RepoSource {
   }
 
   private async shaPeloCommit(slug: string, ref: string): Promise<string> {
-    const sha = await this.mutavel<string>(`sha:${slug}:${ref}`, `${API}/repos/${slug}/commits/${codificarCaminho(ref)}`, {
+    const sha = await this.mutavel<string>(`sha:${slug}:${ref}`, `${API}/repos/${slugUrl(slug)}/commits/${codificarCaminho(ref)}`, {
       accept: ACEITA_SHA,
       text: true,
       ctx: { oque: 'ref', ref },
@@ -212,15 +243,15 @@ export class GitHubSource implements RepoSource {
   }
 
   // ---------- árvore ----------
-  private registrar(sha: string, entries: TreeEntry[]) {
-    const m = this.treeMem.get(sha) ?? new Map<string, TreeEntry>();
+  private registrar(slug: string, sha: string, entries: TreeEntry[]) {
+    const m = this.treeMem.get(`${slug}@${sha}`) ?? new Map<string, TreeEntry>();
     for (const e of entries) m.set(e.path, e);
-    this.treeMem.set(sha, m);
+    this.treeMem.set(`${slug}@${sha}`, m);
   }
 
-  private paraTree(s: ArvoreSalva, sha: string): Tree {
-    this.registrar(sha, s.entries);
-    for (const [dir, treeSha] of Object.entries(s.dirs)) this.dirSha.set(`${sha}:${dir}`, treeSha);
+  private paraTree(s: ArvoreSalva, slug: string, sha: string): Tree {
+    this.registrar(slug, sha, s.entries);
+    for (const [dir, treeSha] of Object.entries(s.dirs)) this.dirSha.set(`${slug}@${sha}:${dir}`, treeSha);
     const dirs = Object.keys(s.dirs);
     return Object.assign([...s.entries], s.truncated ? { truncated: true, dirs } : {}) as Tree;
   }
@@ -241,29 +272,29 @@ export class GitHubSource implements RepoSource {
   async getTree(ref: string): Promise<Tree> {
     const slug = this.slugAtual();
     const sha = await this.resolverSha(slug, ref);
-    const salva = await this.imutavel<ArvoreSalva>(`tree:${sha}`, async () => {
+    const salva = await this.imutavel<ArvoreSalva>(`tree:${slug}:${sha}`, async () => {
       const token = getToken().value;
       const ctx: Ctx = { oque: 'ref', ref };
-      const res = await chamarApi(`${API}/repos/${slug}/git/trees/${sha}?recursive=1`, { token, ctx }, this.cota);
+      const res = await chamarApi(`${API}/repos/${slugUrl(slug)}/git/trees/${sha}?recursive=1`, { token, ctx }, this.cota);
       const j = (await res.json()) as ApiArvore;
       if (!j.truncated) return { ...this.arquivosDe(j), truncated: false };
       // lista cortada (mais de 100 000 entradas ou 7 MB): só a raiz; as pastas carregam sob demanda
-      const raiz = await chamarApi(`${API}/repos/${slug}/git/trees/${sha}`, { token, ctx }, this.cota);
+      const raiz = await chamarApi(`${API}/repos/${slugUrl(slug)}/git/trees/${sha}`, { token, ctx }, this.cota);
       return { ...this.arquivosDe((await raiz.json()) as ApiArvore), truncated: true };
     });
-    return this.paraTree(salva, sha);
+    return this.paraTree(salva, slug, sha);
   }
 
   async loadDir(ref: string, dir: string): Promise<Tree> {
     const slug = this.slugAtual();
     const sha = await this.resolverSha(slug, ref);
-    const treeSha = this.dirSha.get(`${sha}:${dir}`) ?? `${sha}:${dir}`;
-    const salva = await this.imutavel<ArvoreSalva>(`dir:${sha}:${dir}`, async () => {
-      const res = await chamarApi(`${API}/repos/${slug}/git/trees/${encodeURIComponent(treeSha)}`, { token: getToken().value, ctx: { oque: 'ref', ref } }, this.cota);
+    const treeSha = this.dirSha.get(`${slug}@${sha}:${dir}`) ?? `${sha}:${dir}`;
+    const salva = await this.imutavel<ArvoreSalva>(`dir:${slug}:${sha}:${dir}`, async () => {
+      const res = await chamarApi(`${API}/repos/${slugUrl(slug)}/git/trees/${encodeURIComponent(treeSha)}`, { token: getToken().value, ctx: { oque: 'ref', ref } }, this.cota);
       const j = (await res.json()) as ApiArvore;
       return { ...this.arquivosDe(j, dir + '/'), truncated: !!j.truncated };
     });
-    return this.paraTree(salva, sha);
+    return this.paraTree(salva, slug, sha);
   }
 
   // ---------- arquivos ----------
@@ -274,11 +305,11 @@ export class GitHubSource implements RepoSource {
 
   private async arquivoEm(slug: string, ref: string, path: string): Promise<FileContent> {
     const sha = await this.resolverSha(slug, ref);
-    return this.imutavel<FileContent>(`file:${sha}:${path}`, () => this.lerArquivo(slug, sha, path));
+    return this.imutavel<FileContent>(`file:${slug}:${sha}:${path}`, () => this.lerArquivo(slug, sha, path));
   }
 
   private async lerArquivo(slug: string, sha: string, path: string): Promise<FileContent> {
-    const entrada = this.treeMem.get(sha)?.get(path);
+    const entrada = this.treeMem.get(`${slug}@${sha}`)?.get(path);
     const previsto = tipoDoArquivo(path, entrada?.size);
     if (previsto === 'large') return { path, kind: 'large', size: entrada?.size ?? 0 };
     // imagem raster: não passa por texto; o visualizador mostra pelo raw ou por um blob:
@@ -289,11 +320,11 @@ export class GitHubSource implements RepoSource {
     const token = getToken().value;
     let buf: ArrayBuffer;
     if (token) {
-      const url = `${API}/repos/${slug}/contents/${codificarCaminho(path)}?ref=${sha}`;
+      const url = `${API}/repos/${slugUrl(slug)}/contents/${codificarCaminho(path)}?ref=${sha}`;
       const res = await chamarApi(url, { token, accept: ACEITA_RAW, ctx: { oque: 'arquivo', caminho: path } }, this.cota);
       buf = await res.arrayBuffer();
     } else {
-      buf = await chamarRaw(`${RAW}/${slug}/${sha}/${codificarCaminho(path)}`, path);
+      buf = await chamarRaw(`${RAW}/${slugUrl(slug)}/${sha}/${codificarCaminho(path)}`, path);
     }
 
     const bytes = new Uint8Array(buf);
@@ -309,8 +340,8 @@ export class GitHubSource implements RepoSource {
   /** Imagem raster: sem token, o `<img>` lê o raw direto pelo SHA (não gasta cota); com token, os bytes viram um blob:. */
   private async lerImagem(slug: string, sha: string, path: string, size: number): Promise<FileContent> {
     const token = getToken().value;
-    if (!token) return { path, kind: 'image', size, src: `${RAW}/${slug}/${sha}/${codificarCaminho(path)}` };
-    const url = `${API}/repos/${slug}/contents/${codificarCaminho(path)}?ref=${sha}`;
+    if (!token) return { path, kind: 'image', size, src: `${RAW}/${slugUrl(slug)}/${sha}/${codificarCaminho(path)}` };
+    const url = `${API}/repos/${slugUrl(slug)}/contents/${codificarCaminho(path)}?ref=${sha}`;
     const res = await chamarApi(url, { token, accept: ACEITA_RAW, ctx: { oque: 'arquivo', caminho: path } }, this.cota);
     const blob = await res.blob();
     return { path, kind: 'image', size: blob.size, blob };
@@ -321,12 +352,12 @@ export class GitHubSource implements RepoSource {
     const slug = this.slugAtual();
     const sha = await this.resolverSha(slug, ref);
     // o histórico a partir de um SHA não muda: dispensa revalidação
-    const lista = await this.imutavel<Commit[]>(`hist:${sha}:${path ?? ''}`, async () => {
+    const lista = await this.imutavel<Commit[]>(`hist:${slug}:${sha}:${path ?? ''}`, async () => {
       const filtro = path ? `&path=${encodeURIComponent(path)}` : '';
-      const res = await chamarApi(`${API}/repos/${slug}/commits?sha=${sha}&per_page=30${filtro}`, { token: getToken().value, ctx: { oque: 'ref', ref } }, this.cota);
+      const res = await chamarApi(`${API}/repos/${slugUrl(slug)}/commits?sha=${sha}&per_page=30${filtro}`, { token: getToken().value, ctx: { oque: 'ref', ref } }, this.cota);
       return ((await res.json()) as ApiCommit[]).map(this.paraCommit);
     });
-    for (const c of lista) this.pais.set(c.sha, c.parent ?? null);
+    for (const c of lista) this.pais.set(`${slug}@${c.sha}`, c.parent ?? null);
     return lista;
   }
 
@@ -339,14 +370,14 @@ export class GitHubSource implements RepoSource {
   });
 
   private async paiDe(slug: string, sha: string): Promise<string | null> {
-    const conhecido = this.pais.get(sha);
+    const conhecido = this.pais.get(`${slug}@${sha}`);
     if (conhecido !== undefined) return conhecido;
-    const c = await this.imutavel<Commit>(`commit:${sha}`, async () => {
-      const res = await chamarApi(`${API}/repos/${slug}/commits/${sha}`, { token: getToken().value, ctx: { oque: 'ref', ref: sha } }, this.cota);
+    const c = await this.imutavel<Commit>(`commit:${slug}:${sha}`, async () => {
+      const res = await chamarApi(`${API}/repos/${slugUrl(slug)}/commits/${sha}`, { token: getToken().value, ctx: { oque: 'ref', ref: sha } }, this.cota);
       return this.paraCommit((await res.json()) as ApiCommit);
     });
     const pai = c.parent ?? null;
-    this.pais.set(sha, pai);
+    this.pais.set(`${slug}@${sha}`, pai);
     return pai;
   }
 

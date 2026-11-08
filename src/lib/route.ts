@@ -22,7 +22,7 @@ export function parseRepoLink(input: string): RepoLink | null {
   const parts = s.split('/').filter(Boolean);
   if (parts.length < 2) return null;
   const [owner, repo, kind, ref, ...rest] = parts as [string, string, string?, string?, ...string[]];
-  if (!/^[\w.-]+$/.test(owner) || !/^[\w.-]+$/.test(repo)) return null;
+  if (!nomeValido(owner) || !nomeValido(repo)) return null;
   const link: RepoLink = { owner, repo };
   if ((kind === 'tree' || kind === 'blob') && ref) {
     link.ref = ref;
@@ -35,11 +35,20 @@ export function parseRepoLink(input: string): RepoLink | null {
 
 export type Loc = { owner: string; repo: string; ref: string | null; path: string | null; lines: LineRange | null };
 
+/** Dono ou repositório válido: só letras, números, `_`, `.` e `-`, e nunca `.` nem `..`. */
+const nomeValido = (s: string) => /^[\w.-]+$/.test(s) && s !== '.' && s !== '..';
+
 export function parseLocation(pathname: string, hash: string): Loc | null {
   const rel = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname;
-  const parts = rel.split('/').filter(Boolean).map(decodeURIComponent);
+  let parts: string[];
+  try {
+    parts = rel.split('/').filter(Boolean).map(decodeURIComponent);
+  } catch {
+    return null; // %-escape malformado
+  }
   if (parts.length < 2) return null;
   const [owner, repo, kind, ref, ...rest] = parts as [string, string, string?, string?, ...string[]];
+  if (!nomeValido(owner) || !nomeValido(repo)) return null;
   return { owner, repo, ref: ref && (kind === 'blob' || kind === 'tree') ? ref : null, path: kind === 'blob' && rest.length ? rest.join('/') : null, lines: parseLineHash(hash) };
 }
 
