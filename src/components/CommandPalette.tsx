@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { fuzzyFilter, fuzzyMatch } from '../lib/fuzzy';
-import { Icon } from './Icon';
+import type { CodeSymbol } from '../lib/symbols';
+import { Icon, type IconName } from './Icon';
 import { Kbd, trapTab } from './parts';
 
 export type Command = { id: string; group: string; label: string; keys?: string[]; run: () => void };
@@ -33,13 +34,17 @@ function Marked({ text, positions }: { text: string; positions: number[] }) {
 type Item =
   | { kind: 'file'; key: string; label: string; positions: number[]; run: () => void }
   | { kind: 'cmd'; key: string; label: string; positions: number[]; group: string; keys?: string[]; run: () => void }
-  | { kind: 'line'; key: string; label: string; positions: number[]; run: () => void };
+  | { kind: 'line'; key: string; label: string; positions: number[]; run: () => void }
+  | { kind: 'sym'; key: string; label: string; positions: number[]; sym: CodeSymbol; run: () => void };
+
+const SYM_ICON: Record<CodeSymbol['kind'], IconName> = { função: 'code', método: 'code', classe: 'building', tipo: 'tag', variável: 'link', título: 'menu', seção: 'menu' };
 
 export function CommandPalette({
   open,
   files,
   commands,
   lineCount,
+  symbols,
   onOpenFile,
   onGoToLine,
   onClose,
@@ -48,6 +53,8 @@ export function CommandPalette({
   files: string[];
   commands: Command[];
   lineCount: number | null;
+  /** símbolos do arquivo aberto (modo @) */
+  symbols?: CodeSymbol[];
   onOpenFile: (path: string) => void;
   onGoToLine: (line: number) => void;
   onClose: () => void;
@@ -80,6 +87,14 @@ export function CommandPalette({
       });
       return out;
     }
+    if (q.startsWith('@')) {
+      const query = q.slice(1).trim();
+      const list = symbols ?? [];
+      const found = query ? fuzzyFilter(list, query, (x) => x.name, 200) : list.slice(0, 200).map((item) => ({ item, positions: [] as number[] }));
+      for (const r of found)
+        out.push({ group: list.length ? `Símbolos · ${list.length}` : 'Símbolos', item: { kind: 'sym', key: `s:${r.item.line}:${r.item.name}`, label: r.item.name, positions: r.positions, sym: r.item, run: () => onGoToLine(r.item.line) } });
+      return out;
+    }
     const cmdOnly = q.startsWith('>');
     const query = cmdOnly ? q.slice(1).trim() : q.trim();
     if (!cmdOnly && query) {
@@ -95,7 +110,7 @@ export function CommandPalette({
       : commands.slice(0, 14).map((c) => ({ c, m: { score: 0, positions: [] as number[] } }));
     for (const { c, m } of cmds) out.push({ group: 'Comandos', item: { kind: 'cmd', key: c.id, label: c.label, positions: m!.positions, group: c.group, keys: c.keys, run: c.run } });
     return out;
-  }, [q, files, commands, lineCount, onOpenFile, onGoToLine]);
+  }, [q, files, commands, lineCount, symbols, onOpenFile, onGoToLine]);
 
   useEffect(() => setSel(0), [q]);
   useEffect(() => {
@@ -137,7 +152,7 @@ export function CommandPalette({
             aria-controls="paleta-lista"
             aria-activedescendant={items[sel] ? `pal-${sel}` : undefined}
             aria-label="Buscar arquivo ou comando"
-            placeholder="Buscar arquivo, comando (>) ou linha (:)"
+            placeholder="Arquivo, > comando, : linha, @ símbolo"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -155,7 +170,7 @@ export function CommandPalette({
           />
         </div>
         <ul ref={listRef} id="paleta-lista" className="ks-palette__list" role="listbox">
-          {items.length === 0 && <li className="ks-palette__group">Nada encontrado</li>}
+          {items.length === 0 && <li className="ks-palette__group">{q.startsWith('@') ? 'Nenhum símbolo neste arquivo' : 'Nada encontrado'}</li>}
           {items.map(({ group, item }, i) => {
             const head = group !== lastGroup ? ((lastGroup = group), <li key={'g' + i} className="ks-palette__group" role="presentation">{group}</li>) : null;
             return (
@@ -169,9 +184,11 @@ export function CommandPalette({
                   onMouseMove={() => setSel(i)}
                   onClick={() => run(i)}
                 >
-                  <span>
+                  {item.kind === 'sym' && <Icon name={SYM_ICON[item.sym.kind]} size={14} className="ks-palette__symicon" />}
+                  <span style={item.kind === 'sym' && !q.slice(1).trim() ? { paddingLeft: `${item.sym.depth * 12}px` } : undefined}>
                     <Marked text={item.label} positions={item.positions} />
                   </span>
+                  {item.kind === 'sym' && <span className="ks-palette__hint ks-palette__symline">{item.sym.kind} · {item.sym.line}</span>}
                   {item.kind === 'cmd' && item.keys && (
                     <span className="ks-palette__hint">
                       {item.keys.map((k) => (
@@ -185,11 +202,9 @@ export function CommandPalette({
           })}
         </ul>
         <div className="ks-palette__foot">
-          <span><Kbd>↑</Kbd><Kbd>↓</Kbd> navegar</span>
-          <span><Kbd>Enter</Kbd> abrir</span>
-          <span><Kbd>Esc</Kbd> fechar</span>
           <span><Kbd>&gt;</Kbd> comandos</span>
           <span><Kbd>:</Kbd> linha</span>
+          <span><Kbd>@</Kbd> símbolo</span>
         </div>
       </div>
     </div>

@@ -13,8 +13,23 @@ import {
   testFile,
   tsModule,
 } from './gen';
+import { dados, fonte, pdf, wav, zip } from './binarios';
 
-type Def = { path: string; kind: FileKind; text?: () => string; size?: number; lfs?: { oid: string; size: number } };
+const NOTEBOOK = JSON.stringify({
+  nbformat: 4,
+  nbformat_minor: 5,
+  metadata: { kernelspec: { name: 'python3', language: 'python' }, language_info: { name: 'python' } },
+  cells: [
+    { cell_type: 'markdown', source: ['# Análise de vendas\n', '\n', 'Lê o arquivo **vendas.tsv** e resume por região.'] },
+    { cell_type: 'code', execution_count: 1, source: ['import pandas as pd\n', "df = pd.read_csv('../data/vendas.tsv', sep='\\t')\n", 'df.head(3)'], outputs: [{ output_type: 'execute_result', data: { 'text/plain': ['   mes regiao  vendas  meta\n', '0  jan    sul    1200  1300\n', '1  jan  norte    1270  1300\n', '2  fev    sul    1330  1400'] } }] },
+    { cell_type: 'code', execution_count: 2, source: ["por_regiao = df.groupby('regiao')['vendas'].sum()\n", 'print(por_regiao)'], outputs: [{ output_type: 'stream', name: 'stdout', text: ['regiao\n', 'norte    9195\n', 'sul      8775\n'] }] },
+    { cell_type: 'markdown', source: ['## Meta batida?'] },
+    { cell_type: 'code', execution_count: 3, source: ["(df['vendas'] >= df['meta']).mean()"], outputs: [{ output_type: 'execute_result', data: { 'text/plain': ['0.25'] } }] },
+    { cell_type: 'code', execution_count: 4, source: ['df.plot(kind="bar")\n', 'raise ValueError("faltou o eixo x")'], outputs: [{ output_type: 'error', ename: 'ValueError', evalue: 'faltou o eixo x', traceback: ['\u001b[0;31mValueError\u001b[0m: faltou o eixo x'] }] },
+  ],
+}, null, 1);
+
+type Def = { path: string; kind: FileKind; text?: () => string; size?: number; lfs?: { oid: string; size: number }; bin?: () => Uint8Array | Promise<Uint8Array>; mime?: string };
 
 const logo = (cor: string, texto: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="${texto}">\n  <circle cx="60" cy="60" r="52" fill="none" stroke="${cor}" stroke-width="4"/>\n  <circle cx="60" cy="60" r="36" fill="none" stroke="${cor}" stroke-width="4" opacity="0.7"/>\n  <circle cx="60" cy="60" r="20" fill="none" stroke="${cor}" stroke-width="4" opacity="0.5"/>\n  <circle cx="60" cy="60" r="6" fill="${cor}"/>\n</svg>\n`;
@@ -155,7 +170,18 @@ const defs: Def[] = [
   { path: 'assets/logo.svg', kind: 'image', text: () => logo('royalblue', 'Logo') },
   { path: 'assets/banner.svg', kind: 'image', text: () => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120" role="img" aria-label="Banner">\n  <rect width="400" height="120" fill="none" stroke="slategray" stroke-width="2"/>\n  <text x="200" y="68" text-anchor="middle" font-family="monospace" font-size="28" fill="steelblue">exemplo</text>\n</svg>\n' },
   { path: 'assets/icone.svg', kind: 'image', text: () => logo('tomato', 'Ícone') },
-  { path: 'assets/fonte.woff2', kind: 'binary', size: 48213 },
+  { path: 'assets/fonte.woff2', kind: 'font', size: 21500, bin: fonte, mime: 'font/woff2' },
+  { path: 'assets/som.wav', kind: 'audio', size: 9644, bin: wav, mime: 'audio/wav' },
+  { path: 'assets/pacote.zip', kind: 'archive', size: 900, bin: zip, mime: 'application/zip' },
+  { path: 'assets/dados.bin', kind: 'binary', size: 6144, bin: dados },
+  { path: 'docs/manual.pdf', kind: 'pdf', size: 900, bin: pdf, mime: 'application/pdf' },
+  { path: 'data/vendas.tsv', kind: 'csv', text: () => 'mes\tregiao\tvendas\tmeta\n' + ['jan', 'fev', 'mar', 'abr', 'mai', 'jun'].flatMap((m, i) => ['sul', 'norte'].map((r, k) => `${m}\t${r}\t${1200 + i * 130 + k * 70}\t${1300 + i * 100}`)).join('\n') + '\n' },
+  { path: 'notebooks/analise.ipynb', kind: 'notebook', text: () => NOTEBOOK },
+  { path: 'infra/Dockerfile', kind: 'text', text: () => 'FROM node:22-alpine AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\nFROM nginx:alpine\nCOPY --from=build /app/dist /usr/share/nginx/html\nEXPOSE 80\n' },
+  { path: 'infra/main.tf', kind: 'text', text: () => 'terraform {\n  required_version = ">= 1.6"\n}\n\nresource "aws_s3_bucket" "site" {\n  bucket = "exemplo-site"\n  tags = {\n    projeto = "exemplo"\n  }\n}\n' },
+  { path: 'infra/servidor.go', kind: 'text', text: () => 'package main\n\nimport (\n\t"fmt"\n\t"net/http"\n)\n\ntype Servidor struct {\n\tPorta int\n}\n\nfunc (s *Servidor) Iniciar() error {\n\thttp.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {\n\t\tfmt.Fprintln(w, "olá")\n\t})\n\treturn http.ListenAndServe(fmt.Sprintf(":%d", s.Porta), nil)\n}\n\nfunc main() {\n\ts := &Servidor{Porta: 8080}\n\tif err := s.Iniciar(); err != nil {\n\t\tpanic(err)\n\t}\n}\n' },
+  { path: 'infra/lib.rs', kind: 'text', text: () => 'use std::collections::HashMap;\n\n/// Conta palavras de um texto.\npub struct Contador {\n    mapa: HashMap<String, usize>,\n}\n\nimpl Contador {\n    pub fn novo() -> Self {\n        Self { mapa: HashMap::new() }\n    }\n\n    pub fn somar(&mut self, texto: &str) {\n        for p in texto.split_whitespace() {\n            *self.mapa.entry(p.to_lowercase()).or_insert(0) += 1;\n        }\n    }\n}\n' },
+  { path: 'infra/consulta.sql', kind: 'text', text: () => 'CREATE TABLE IF NOT EXISTS pedidos (\n  id SERIAL PRIMARY KEY,\n  cliente TEXT NOT NULL,\n  total NUMERIC(10, 2) DEFAULT 0\n);\n\nSELECT cliente, SUM(total) AS gasto\nFROM pedidos\nGROUP BY cliente\nORDER BY gasto DESC\nLIMIT 10;\n' },
   { path: 'assets/pacote.bin', kind: 'binary', size: 1048576 },
   { path: 'assets/modelo.onnx', kind: 'lfs', size: 131, lfs: { oid: fakeSha('modelo.onnx').padEnd(64, '0'), size: 187654321 } },
   { path: 'assets/cena.glb', kind: 'lfs', size: 130, lfs: { oid: fakeSha('cena.glb').padEnd(64, '0'), size: 52428800 } },
@@ -205,13 +231,21 @@ export function treeFor(ref: string): TreeEntry[] {
 export function fileFor(ref: string, path: string): FileContent | null {
   const d = defsFor(ref).find((x) => x.path === path);
   if (!d) return null;
-  if (d.kind === 'binary' || d.kind === 'large') return { path, kind: d.kind, size: d.size ?? 0 };
+  if (d.kind === 'binary' && !d.bin) return { path, kind: d.kind, size: d.size ?? 0 };
+  if (d.kind === 'large') return { path, kind: d.kind, size: d.size ?? 0 };
+  if (d.bin) return { path, kind: d.kind, size: d.size ?? 0, mime: d.mime };
   if (d.kind === 'lfs') return { path, kind: 'lfs', size: d.size ?? 0, lfs: d.lfs };
   const text = textOf(d);
   let lines = 1;
   for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) lines++;
   if (text.endsWith('\n')) lines--;
   return { path, kind: d.kind, size: d.size ?? text.length, text, lines };
+}
+
+/** Bytes dos arquivos binários de demonstração. */
+export async function bytesFor(ref: string, path: string): Promise<Uint8Array | null> {
+  const d = defsFor(ref).find((x) => x.path === path);
+  return d?.bin ? await d.bin() : null;
 }
 
 export const REFS: Ref[] = [

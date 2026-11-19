@@ -3,7 +3,7 @@ import type { CSSProperties, Ref } from 'react';
 import { Icon } from '../components/Icon';
 import { computeFolds } from '../lib/folds';
 import type { LineRange } from '../lib/hash';
-import { buildLayout, visibleIndexOf, windowFor } from '../lib/layout';
+import { buildLayout, indexAtRow, visibleIndexOf, windowFor } from '../lib/layout';
 import { readline, sweepLines } from '../anim/motion';
 import { openHighlight, type HighlightSession } from './client';
 import { CHUNK, type ThemeInfo, type Tok } from './protocol';
@@ -48,10 +48,30 @@ function leading(text: string) {
   return i;
 }
 
-type Seg = { t: string; c?: string; k?: string; f?: number; mark?: 0 | 1 | 2 };
+type Seg = { t: string; c?: string; k?: string; f?: number; mark?: 0 | 1 | 2 | 3 };
+/** trecho marcado na linha: achado da busca (o atual com cur) ou ocorrência da palavra selecionada (occ) */
+type Range = { start: number; end: number; cur: boolean; occ?: boolean };
+
+/** Quantas guias de recuo a linha tem: uma por tab e uma a cada `unit` espaços. */
+function guideCount(text: string, unit: number): number {
+  let n = 0;
+  let spaces = 0;
+  for (let k = 0; k < text.length; k++) {
+    if (text[k] === '\t') n++;
+    else if (text[k] === ' ') {
+      if (++spaces % unit === 0) n++;
+    } else break;
+  }
+  return n;
+}
+
+const isBlank = (t: string) => t.trim() === '';
+/** palavra que vale destacar: letras, números, _ e $, de 2 a 64 caracteres */
+const WORD = /^[\p{L}\p{N}_$]{2,64}$/u;
+const escapeRe = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Corta os tokens depois do recuo e parte nos trechos achados pela busca. */
-function segments(text: string, toks: Tok[] | undefined, from: number, ranges: { start: number; end: number; cur: boolean }[]): Seg[] {
+function segments(text: string, toks: Tok[] | undefined, from: number, ranges: Range[]): Seg[] {
   const base: Tok[] = toks ?? [{ t: text }];
   const out: Seg[] = [];
   let pos = 0;
@@ -77,7 +97,7 @@ function segments(text: string, toks: Tok[] | undefined, from: number, ranges: {
           continue;
         }
         const n = Math.min(r.end - start, piece.length);
-        out.push({ ...tk, t: piece.slice(0, n), mark: r.cur ? 2 : 1 });
+        out.push({ ...tk, t: piece.slice(0, n), mark: r.occ ? 3 : r.cur ? 2 : 1 });
         piece = piece.slice(n);
         start += n;
       }
@@ -97,12 +117,16 @@ type LineProps = {
   foldable: boolean;
   folded: boolean;
   hidden: number;
-  ranges: { start: number; end: number; cur: boolean }[];
+  ranges: Range[];
+  /** nível da guia acesa (bloco da linha atual); -1 nenhuma */
+  activeGuide: number;
+  /** linha em branco dentro de um bloco: guias que continuam passando por ela */
+  blankGuides: number;
   onNumber: (line: number, shift: boolean) => void;
   onFold: (line: number) => void;
 };
 
-const Line = memo(function Line({ i, text, toks, unit, selected, current, foldable, folded, hidden, ranges, onNumber, onFold }: LineProps) {
+const Line = memo(function Line({ i, text, toks, unit, selected, current, foldable, folded, hidden, ranges, activeGuide, blankGuides, onNumber, onFold }: LineProps) {
   const lead = leading(text);
   const segs = useMemo(() => segments(text, toks, lead, ranges), [text, toks, lead, ranges]);
   // guias de indentação: um nível a cada `unit` espaços (ou a cada tab)
@@ -143,11 +167,13 @@ const Line = memo(function Line({ i, text, toks, unit, selected, current, foldab
       </span>
       <span className="ks-line__code">
         {guides.map((g, n) =>
-          g ? <span key={n} className="ks-indent" style={{ width: `${unit}ch` }} /> : <span key={n} className="ks-indent" />,
+          g ? <span key={n} className={`ks-indent${n === activeGuide ? ' is-active' : ''}`} style={{ width: `${unit}ch` }} /> : <span key={n} className={`ks-indent${n === activeGuide ? ' is-active' : ''}`} />,
         )}
         {rest > 0 && <span className="ks-ws">{' '.repeat(rest)}</span>}
+        {!text && blankGuides > 0 &&
+          Array.from({ length: blankGuides }, (_, n) => <span key={'b' + n} className={`ks-indent${n === activeGuide ? ' is-active' : ''}`} style={{ width: `${unit}ch` }} />)}
         {segs.map((s, n) => {
-          const cls = [s.c, s.mark ? (s.mark === 2 ? 'ks-find is-current' : 'ks-find') : ''].filter(Boolean).join(' ');
+          const cls = [s.c, s.mark ? (s.mark === 3 ? 'ks-occ' : s.mark === 2 ? 'ks-find is-current' : 'ks-find') : ''].filter(Boolean).join(' ');
           const style: CSSProperties | undefined =
             s.k || s.f
               ? {
@@ -185,6 +211,7 @@ export function CodeView(p: Props) {
   const [foldMap, setFoldMap] = useState<Map<number, number>>(() => new Map());
   const [folded, setFolded] = useState<ReadonlySet<number>>(() => new Set());
   const [cur, setCur] = useState<number | null>(null); // linha atual, 1-based
+  const [word, setWord] = useState<string | null>(null); // palavra selecionada: todas as ocorrências acendem
   const anchor = useRef<number | null>(null);
   const [, setTick] = useState(0); // novo bloco colorido chegou: só força o desenho
   const tokens = useRef(new Map<number, Tok[][]>());
@@ -231,6 +258,7 @@ export function CodeView(p: Props) {
     setFolded(new Set());
     setFoldMap(new Map());
     setCur(null);
+    setWord(null);
     anchor.current = null;
     tokens.current = new Map();
     setTick((t) => t + 1);
@@ -467,6 +495,7 @@ export function CodeView(p: Props) {
         }
         break;
       case 'Escape':
+        if (word) setWord(null);
         if (selection) {
           onSelect(null);
           anchor.current = null;
@@ -491,7 +520,7 @@ export function CodeView(p: Props) {
   }, [lines]);
 
   const matchesByLine = useMemo(() => {
-    const m = new Map<number, { start: number; end: number; cur: boolean }[]>();
+    const m = new Map<number, Range[]>();
     if (p.find) {
       p.find.matches.forEach((x, k) => {
         const list = m.get(x.line) ?? [];
@@ -502,8 +531,80 @@ export function CodeView(p: Props) {
     return m;
   }, [p.find]);
 
+  // ocorrências da palavra selecionada (duplo clique): regex com borda de palavra
+  const wordRe = useMemo(() => (word ? new RegExp(`(?<![\\p{L}\\p{N}_$])${escapeRe(word)}(?![\\p{L}\\p{N}_$])`, 'gu') : null), [word]);
+  const occTotal = useMemo(() => {
+    if (!wordRe) return 0;
+    let n = 0;
+    for (const l of lines) {
+      wordRe.lastIndex = 0;
+      const m = l.match(wordRe);
+      if (m) n += m.length;
+    }
+    return n;
+  }, [wordRe, lines]);
+  const rangesFor = (i: number): Range[] => {
+    const found = matchesByLine.get(i);
+    if (!wordRe) return found ?? none;
+    const text = lines[i]!;
+    const occ: Range[] = [];
+    wordRe.lastIndex = 0;
+    for (let m = wordRe.exec(text); m; m = wordRe.exec(text)) {
+      const r = { start: m.index, end: m.index + m[0].length, cur: false, occ: true };
+      if (!found?.some((f) => f.end > r.start && f.start < r.end)) occ.push(r);
+    }
+    if (!occ.length) return found ?? none;
+    return [...(found ?? []), ...occ].sort((a, b) => a.start - b.start);
+  };
+
+  // bloco da linha atual: o menor intervalo de dobra que a contém acende a guia dele
+  const activeScope = useMemo(() => {
+    if (cur == null || !foldMap.size) return null;
+    const idx = cur - 1;
+    let best: { s: number; e: number } | null = null;
+    for (const [st, en] of foldMap) if (st < idx && en >= idx && (!best || st > best.s)) best = { s: st, e: en };
+    if (!best && foldMap.has(idx)) best = { s: idx, e: foldMap.get(idx)! };
+    return best ? { ...best, level: guideCount(lines[best.s]!, unit) } : null;
+  }, [cur, foldMap, lines, unit]);
+
+  // linha em branco: as guias passam por ela (o menor recuo entre a linha de cima e a de baixo)
+  const blankGuidesOf = (i: number) => {
+    if (!isBlank(lines[i]!)) return 0;
+    let up = i - 1;
+    while (up >= 0 && up > i - 200 && isBlank(lines[up]!)) up--;
+    let dn = i + 1;
+    while (dn < lines.length && dn < i + 200 && isBlank(lines[dn]!)) dn++;
+    if (up < 0 || dn >= lines.length) return 0;
+    return Math.min(guideCount(lines[up]!, unit), guideCount(lines[dn]!, unit));
+  };
+
+  // rolagem fixa: as linhas que abrem os blocos onde a primeira linha da tela está (até 4)
+  const sticky = useMemo(() => {
+    const n = layout.visible.length;
+    if (!n || !foldMap.size || metrics.lineH <= 0) return [] as number[];
+    const at = (extra: number) => layout.visible[indexAtRow(layout.tops, n, Math.max(0, (view.top - 8) / metrics.lineH + extra))]!;
+    const scopes = (top: number) => {
+      const out: number[] = [];
+      for (const [st, en] of foldMap) if (st < top && en >= top) out.push(st);
+      out.sort((a, b) => a - b);
+      // só os que abrem bloco de verdade (recuo crescente), no máximo 4
+      const chain: number[] = [];
+      let lastInd = -1;
+      for (const st of out) {
+        const ind = guideCount(lines[st]!, unit);
+        if (ind > lastInd) {
+          chain.push(st);
+          lastInd = ind;
+        }
+      }
+      return chain.slice(-4);
+    };
+    const first = scopes(at(0));
+    return first.length ? scopes(at(first.length)) : first;
+  }, [layout, foldMap, view.top, metrics.lineH, lines, unit]);
+
   const rows = [];
-  const none: { start: number; end: number; cur: boolean }[] = useMemo(() => [], []);
+  const none: Range[] = useMemo(() => [], []);
   for (let k = win.from; k < win.to; k++) {
     const i = layout.visible[k]!;
     const chunk = tokens.current.get(Math.floor(i / CHUNK));
@@ -522,12 +623,45 @@ export function CodeView(p: Props) {
         foldable={end !== undefined}
         folded={isFolded}
         hidden={end !== undefined ? end - i : 0}
-        ranges={matchesByLine.get(i) ?? none}
+        ranges={rangesFor(i)}
+        activeGuide={activeScope && i > activeScope.s && i <= activeScope.e ? activeScope.level : -1}
+        blankGuides={blankGuidesOf(i)}
         onNumber={select}
         onFold={toggleFold}
       />,
     );
   }
+
+  const stickyRows = sticky.map((i) => {
+    const chunk = tokens.current.get(Math.floor(i / CHUNK));
+    return (
+      <div key={i} className="ks-sticky__row" onMouseDown={(e) => { e.preventDefault(); scrollToLine(i + 1); }} title={`Ir para a linha ${i + 1}`}>
+        <Line
+          i={i}
+          text={lines[i]!}
+          toks={chunk?.[i - Math.floor(i / CHUNK) * CHUNK]}
+          unit={unit}
+          selected={false}
+          current={false}
+          foldable={false}
+          folded={false}
+          hidden={0}
+          ranges={none}
+          activeGuide={-1}
+          blankGuides={0}
+          onNumber={() => {}}
+          onFold={() => {}}
+        />
+      </div>
+    );
+  });
+
+  // duplo clique numa palavra (ou seleção de uma palavra só): acende as ocorrências
+  const onMouseUp = () => {
+    const t = window.getSelection()?.toString() ?? '';
+    if (WORD.test(t)) setWord(t);
+    else if (!t && word) setWord(null);
+  };
 
   const topPad = layout.tops[win.from]! * metrics.lineH;
   const botPad = (layout.total - layout.tops[win.to]!) * metrics.lineH;
@@ -544,16 +678,30 @@ export function CodeView(p: Props) {
       } as CSSProperties)
     : ({ '--gutter': String(Math.max(2, String(lines.length).length)) } as CSSProperties);
 
+  const scrollbar = boxRef.current ? boxRef.current.offsetWidth - boxRef.current.clientWidth : 0;
   return (
+    <div className="ks-codewrap" style={edVars}>
+    {stickyRows.length > 0 && (
+      <div className={`ks-codeview ks-sticky${info ? ' is-themed' : ''}`} style={{ right: scrollbar }} aria-hidden="true">
+        {stickyRows}
+      </div>
+    )}
+    {word && occTotal > 0 && (
+      <button type="button" className="ks-occ-chip" onClick={() => setWord(null)} data-tip="Limpar destaque (Esc)" aria-label={`${occTotal} ocorrências de ${word}. Limpar destaque`} style={{ right: scrollbar + 12 }}>
+        <code>{word}</code>
+        <b>{occTotal}</b>
+        <Icon name="x" size={12} />
+      </button>
+    )}
     <div
       ref={boxRef}
       className={`ks-codeview${wrap ? ' is-wrap' : ''}${p.readline ? ' has-readline' : ''}${info ? ' is-themed' : ''}`}
-      style={edVars}
       tabIndex={0}
       role="region"
       aria-label={p.readOnlyLabel}
       onScroll={handleScroll}
       onKeyDown={onKeyDown}
+      onMouseUp={onMouseUp}
       data-lines={lines.length}
       data-rendered={win.to - win.from}
     >
@@ -563,6 +711,7 @@ export function CodeView(p: Props) {
       <div style={{ height: topPad }} aria-hidden="true" />
       {rows}
       <div style={{ height: botPad }} aria-hidden="true" />
+    </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // Implementação falsa de RepoSource: latência curta, cota que cai a cada chamada, nenhuma rede.
 import type { Commit, FileContent, Quota, Ref, RepoInfo, RepoSource, TreeEntry } from '../data/types';
 import { previousVersion } from './gen';
-import { COMMITS, REFS, commitsFor, fileFor, treeFor } from './repo';
+import { COMMITS, REFS, bytesFor, commitsFor, fileFor, treeFor } from './repo';
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -52,7 +52,8 @@ export class MockSource implements RepoSource {
     await sleep(50);
     const f = fileFor(ref, path);
     if (!f) throw new Error(`Arquivo não encontrado: ${path}`);
-    return f;
+    const bytes = await bytesFor(ref, path);
+    return bytes ? { ...f, bytes, size: bytes.length } : f;
   }
 
   async getCommits(_ref: string, path?: string): Promise<Commit[]> {

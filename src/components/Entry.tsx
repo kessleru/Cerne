@@ -214,9 +214,8 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
 
       <div className="ks-home__body">
         <section className="ks-home__hero" aria-labelledby="home-titulo">
-          <p className="ks-home__eyebrow"><span className="ks-home__dot" aria-hidden="true" />Visualizador de repositórios do GitHub</p>
           <h1 id="home-titulo" className="ks-home__title">Leia qualquer repositório{' '}<br />como no seu editor.</h1>
-          <p className="ks-home__lead">Cole um link ou escreva dono/repo. Árvore, abas, busca, histórico e diferenças, direto no navegador e sem instalar nada.</p>
+          <p className="ks-home__lead">Cole um link do GitHub. Sem instalar nada.</p>
 
           <form
             className="ks-entry__box ks-entry__field ks-home__field"
@@ -262,7 +261,7 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
                 </span>
               ))
             ) : (
-              <span className="ks-entry__hint">Funciona com links de repositório, ramo, pasta, arquivo e linhas (#L10-L20).</span>
+              <span className="ks-entry__hint" />
             )}
           </p>
         </section>
@@ -282,21 +281,19 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
         </div>
 
         {conta.status === 'anonimo' && (
-          <button type="button" className="ks-home__cta" onClick={(e) => openAccount(e)}>
-            <span className="ks-home__ctaicon"><Icon name="key" size={16} /></span>
-            <span>
-              <strong>Entre com um token do GitHub</strong>
-              <span>Repositórios privados e 5 000 chamadas por hora em vez de {quota.limit}. Leva 1 minuto, com guia passo a passo.</span>
-            </span>
-            <Icon name="arrowRight" size={16} />
+          <button type="button" className="ks-home__cta" onClick={(e) => openAccount(e)} data-tip={`Sem token: ${quota.limit} chamadas por hora, só públicos`}>
+            <Icon name="key" size={14} />
+            <span><b>Entrar</b> · privados e 5 000 chamadas/h</span>
+            <Icon name="arrowRight" size={14} />
           </button>
         )}
 
         <ul className="ks-home__features" aria-label="O que o Cerne faz">
-          <Feature icon="panelLeft" title="Árvore e abas">Pastas, ícones por tipo e várias abas, como no VS Code.</Feature>
-          <Feature icon="search" title="Busca em tudo">Arquivos, comandos e linhas numa só paleta: Ctrl K.</Feature>
-          <Feature icon="history" title="Histórico e diferenças">Commits do arquivo e o que mudou, lado a lado.</Feature>
-          <Feature icon="image" title="Imagem do trecho">Exporte linhas selecionadas como imagem com o seu tema.</Feature>
+          <Feature icon="panelLeft" title="Árvore e abas" tip="Pastas, ícones por tipo e várias abas" />
+          <Feature icon="search" title="Busca" tip="Arquivos, comandos, linhas e símbolos: Ctrl K" />
+          <Feature icon="history" title="Histórico" tip="Commits do arquivo e o que mudou" />
+          <Feature icon="code" title="200+ formatos" tip="Código, notebooks, PDF, áudio, vídeo, fontes e ZIP" />
+          <Feature icon="image" title="Imagem do trecho" tip="Exporte linhas como imagem" />
         </ul>
       </div>
 
@@ -323,12 +320,11 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   );
 }
 
-function Feature({ icon, title, children }: { icon: IconName; title: string; children: React.ReactNode }) {
+function Feature({ icon, title, tip }: { icon: IconName; title: string; tip: string }) {
   return (
-    <li className="ks-home__feature">
-      <span className="ks-home__featicon"><Icon name={icon} size={16} /></span>
-      <strong>{title}</strong>
-      <span>{children}</span>
+    <li className="ks-home__feature" data-tip={tip} tabIndex={0} aria-label={`${title}: ${tip}`}>
+      <Icon name={icon} size={14} />
+      {title}
     </li>
   );
 }

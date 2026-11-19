@@ -121,7 +121,6 @@ export function CommitList({ commits, active, path, onPick }: { commits: Commit[
         <Icon name="history" size={14} />
         {path ? <>Histórico de <code>{path}</code></> : 'Histórico do repositório'}
         <span className="ks-timeline__count">{commits.length} {commits.length === 1 ? 'commit' : 'commits'}</span>
-        <span className="ks-timeline__tip">Clique num commit para ver o que mudou</span>
       </p>
       {grupos.map((g) => (
         <section key={g.dia + g.itens[0]!.sha} className="ks-timeline__day">

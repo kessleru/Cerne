@@ -56,10 +56,10 @@ export async function lerConta(token: string): Promise<Conta> {
   try {
     res = await fetch(`${API}/user`, { headers: { Accept: ACEITA_JSON, Authorization: `Bearer ${token}` } });
   } catch {
-    throw new ErroConta('Sem conexão com o GitHub. Confira a internet e tente de novo.');
+    throw new ErroConta('Sem conexão com o GitHub.');
   }
-  if (res.status === 401) throw new ErroConta('O GitHub não aceitou esse token. Ele pode estar errado, expirado ou ter sido apagado. Copie de novo ou gere outro.');
-  if (res.status === 403) throw new ErroConta('O GitHub recusou o token agora (limite de chamadas ou bloqueio da organização). Tente de novo em alguns minutos.');
+  if (res.status === 401) throw new ErroConta('Token recusado: errado, expirado ou apagado.');
+  if (res.status === 403) throw new ErroConta('O GitHub recusou agora (limite ou organização). Tente em alguns minutos.');
   if (!res.ok) throw new ErroConta(`O GitHub respondeu com erro ${res.status}. Tente de novo em instantes.`);
   const j = (await res.json()) as Record<string, unknown>;
   const txt = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);

@@ -7,6 +7,7 @@ import type { Commit, FileContent, Quota, Ref, Tree as TreeData, TreeEntry } fro
 import { PACK_LABELS } from '../icons/packs';
 import { formatLineHash, parseLineHash, type LineRange } from '../lib/hash';
 import { baseName, langOf } from '../lib/lang';
+import { extractSymbols } from '../lib/symbols';
 import { buildPath, parseRepoLink, type RepoLink } from '../lib/route';
 import { source } from '../data/source';
 import { ACCENTS, APPEARANCE_LABELS, DARK_THEMES, SCOPE_LABELS, prefsStore, reducedMotion, usePrefs, type Density, type EditorScope, type IconPack } from '../state/prefs';
@@ -339,6 +340,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     add('split', 'Aplicativo', 'Abrir em duas colunas', () => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active)), ['Ctrl', '\\']);
     add('find', 'Arquivo', 'Buscar no arquivo', () => lines && setFindOpen(true), ['Ctrl', 'F']);
     add('goto', 'Arquivo', 'Ir para a linha...', () => setPalette({ initial: ':', origin: null }), ['Ctrl', 'G']);
+    add('simbolo', 'Arquivo', 'Ir para símbolo (função, classe, título)...', () => setPalette({ initial: '@', origin: null }), ['Ctrl', 'Shift', 'O']);
     add('wrap', 'Arquivo', prefs.wrap ? 'Desligar quebra de linha' : 'Ligar quebra de linha', () => prefsStore.set({ wrap: !prefs.wrap }), ['Alt', 'Z']);
     add('fold', 'Arquivo', 'Dobrar o bloco atual', () => code.current?.foldCurrent(true), ['Ctrl', 'Shift', '[']);
     add('unfold', 'Arquivo', 'Desdobrar o bloco atual', () => code.current?.foldCurrent(false), ['Ctrl', 'Shift', ']']);
@@ -374,6 +376,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
       const k = e.key.toLowerCase();
       if (ctrl && !e.shiftKey && !e.altKey && (k === 'k' || k === 'p')) setPalette({ initial: '', origin: null });
       else if (ctrl && e.shiftKey && k === 'p') setPalette({ initial: '>', origin: null });
+      else if (ctrl && e.shiftKey && k === 'o') setPalette({ initial: '@', origin: null });
       else if (ctrl && k === 'g') setPalette({ initial: ':', origin: null });
       else if (ctrl && k === 'f' && lines && view === 'file') {
         setFindOpen(true);
@@ -405,6 +408,8 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
   const onFirstReadline = readlineDone.current ? false : true;
 
   const lang = active ? langOf(active) : null;
+  // símbolos só quando a paleta abre (o arquivo pode ter 50 000 linhas)
+  const symbols = useMemo(() => (palette && lines && active ? extractSymbols(lines, langOf(active).shiki) : undefined), [palette, lines, active]);
   const themeLabel = prefs.editorTheme ? `${editorThemes.find((t) => t.id === prefs.editorTheme)?.label ?? ''} · ${SCOPE_LABELS[prefs.editorScope]}` : 'Igual à interface';
   const treeGate = useLoadingGate(!entries && !treeError);
   const viewGate = useLoadingGate((view === 'history' && !history) || (view === 'diff' && !diff));
@@ -494,12 +499,12 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
         title="Arquivo não encontrado"
         actions={
           <>
-            <button type="button" className="key key--accent" onClick={() => setPalette({ initial: missing.split('/').pop() ?? '', origin: null })}>Buscar pelo nome</button>
-            <button type="button" className="key" onClick={() => setMissing(null)}>Ver o repositório</button>
+            <button type="button" className="key key--accent" onClick={() => setPalette({ initial: missing.split('/').pop() ?? '', origin: null })}><Icon name="search" size={14} /> Buscar</button>
+            <button type="button" className="key" onClick={() => setMissing(null)}>Fechar</button>
           </>
         }
       >
-        <code>{missing}</code> não existe em <b>{refName}</b>. Ele pode ter sido movido, renomeado ou estar em outro ramo.
+        <code>{missing}</code> não está em <b>{refName}</b>.
       </PaneState>
     );
   else if (active)
@@ -509,6 +514,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
           source={source}
           refName={refName}
           path={active}
+          githubUrl={githubBlob(session.owner, session.repo, refName, active)}
           prefs={prefs}
           primary
           selection={selection}
@@ -624,6 +630,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
           <div className="ks-pane__head">
             {active ? <Breadcrumb path={active} onCrumb={(f) => { setSideOpen(true); setReveal({ path: f, nonce: Date.now() }); }} /> : <span>sem arquivo</span>}
             <div className="ks-pane__tools">
+              <button type="button" className="ks-icon-btn" aria-label="Ir para símbolo" data-tip="Símbolos" data-tip-key="Ctrl+Shift+O" onClick={() => setPalette({ initial: '@', origin: null })} disabled={!active || !lines}><Icon name="list" /></button>
               <button type="button" className="ks-icon-btn" aria-pressed={view === 'file'} aria-label="Ver o arquivo" data-tip="Ver o arquivo" onClick={() => setView('file')} disabled={!active}><Icon name="file" /></button>
               <button type="button" className="ks-icon-btn" aria-pressed={view === 'history'} aria-label="Histórico do arquivo" data-tip="Histórico do arquivo" data-tip-key="Alt+H" onClick={() => openHistory(active)}><Icon name="history" /></button>
               <button type="button" className="ks-icon-btn" aria-pressed={view === 'diff'} aria-label="Mudanças do último commit" data-tip="Mudanças do último commit" data-tip-key="Alt+D" disabled={!active || !commits[0]} onClick={() => active && commits[0] && openDiff(commits[0], active)}><Icon name="diff" /></button>
@@ -648,7 +655,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
                 <button type="button" className="ks-icon-btn" aria-label="Fechar segunda coluna" data-tip="Fechar segunda coluna" onClick={() => setSplit(null)}><Icon name="x" /></button>
               </div>
               <div className="ks-pane__body">
-                <FilePane source={source} refName={refName} path={splitPath} prefs={prefs} primary={false} selection={null} onSelect={() => {}} find={null} onFile={() => {}} readline={false} retry={retry} onRetry={() => setRetry((n) => n + 1)} />
+                <FilePane source={source} refName={refName} path={splitPath} githubUrl={githubBlob(session.owner, session.repo, refName, splitPath)} prefs={prefs} primary={false} selection={null} onSelect={() => {}} find={null} onFile={() => {}} readline={false} retry={retry} onRetry={() => setRetry((n) => n + 1)} />
               </div>
             </section>
           </>
@@ -677,6 +684,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
             files={files}
             commands={commands}
             lineCount={lines ? lines.length : null}
+            symbols={symbols}
             onOpenFile={(p) => { openFile(p, 'pin'); setReveal({ path: p, nonce: Date.now() }); }}
             onGoToLine={gotoLine}
             onClose={() => setPalette(null)}
@@ -702,6 +710,10 @@ function history_replace(url: string) {
   history.replaceState(null, '', url);
 }
 
+/** Endereço do arquivo no github.com. */
+const githubBlob = (owner: string, repo: string, ref: string, path: string) =>
+  `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/blob/${ref.split('/').map(encodeURIComponent).join('/')}/${path.split('/').map(encodeURIComponent).join('/')}`;
+
 /** Mensagem de erro legível para o painel afetado. */
 const mensagem = (e: unknown) => String(e instanceof Error ? e.message : e);
 
@@ -726,9 +738,9 @@ function findReadme(paths: string[], dir: string): string | null {
 /** Painel sem arquivo: os três atalhos que levam a algum lugar. */
 function EmptyPane({ onPalette, onTree, onPrefs }: { onPalette: () => void; onTree: () => void; onPrefs: () => void }) {
   const rows: { label: string; hint: string; keys: string[]; run: () => void }[] = [
-    { label: 'Buscar arquivo ou comando', hint: 'Digite parte do nome', keys: ['Ctrl', 'K'], run: onPalette },
-    { label: 'Mostrar a árvore de arquivos', hint: 'Navegue pelas pastas', keys: ['Ctrl', 'B'], run: onTree },
-    { label: 'Abrir as preferências', hint: 'Tema, código e dados', keys: ['Ctrl', ','], run: onPrefs },
+    { label: 'Buscar', hint: '', keys: ['Ctrl', 'K'], run: onPalette },
+    { label: 'Árvore', hint: '', keys: ['Ctrl', 'B'], run: onTree },
+    { label: 'Preferências', hint: '', keys: ['Ctrl', ','], run: onPrefs },
   ];
   return (
     <div className="ks-emptypane">
@@ -739,7 +751,6 @@ function EmptyPane({ onPalette, onTree, onPrefs }: { onPalette: () => void; onTr
             <li key={r.label}>
               <button type="button" className="ks-emptypane__item" onClick={r.run}>
                 <span className="ks-emptypane__label">{r.label}</span>
-                <span className="ks-emptypane__hint">{r.hint}</span>
                 <span className="ks-emptypane__keys">
                   {r.keys.map((k) => (
                     <Kbd key={k}>{k}</Kbd>

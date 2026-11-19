@@ -143,10 +143,18 @@ export function ImageView({ svg, src, blob, alt }: { svg?: string; src?: string;
     return () => URL.revokeObjectURL(url);
   }, [blob]);
   const url = dataUrl ?? blobUrl ?? src;
+  const [dim, setDim] = useState<{ w: number; h: number } | null>(null);
+  const [real, setReal] = useState(false);
   return (
-    <div className="ks-imageview">
+    <div className={`ks-imageview${real ? ' is-real' : ''}`}>
+      <div className="ks-imageview__tools">
+        {dim && <span className="ks-imageview__dim">{dim.w} × {dim.h}</span>}
+        <button type="button" className="ks-icon-btn" aria-pressed={real} aria-label={real ? 'Ajustar à tela' : 'Tamanho real'} data-tip={real ? 'Ajustar à tela' : 'Tamanho real (100%)'} onClick={() => setReal((r) => !r)}>
+          <Icon name="maximize" />
+        </button>
+      </div>
       <div className="ks-imageview__stage">
-        {url ? <img src={url} alt={alt} /> : null}
+        {url ? <img src={url} alt={alt} onLoad={(e) => setDim({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} onClick={() => setReal((r) => !r)} /> : null}
       </div>
     </div>
   );

@@ -19,13 +19,13 @@ Visualizador de repositórios do GitHub. Site estático (Vite, React, TypeScript
 | `src/data/` | Contrato `types.ts` (`RepoSource`), `source.ts` (escolhe a fonte), `github/` (API, cota, erros), `cache/` (IndexedDB, separado por token) |
 | `src/mock/` | Repositório falso, usado só para `kessleru/exemplo` |
 | `src/kessleru/` | `tokens.css` e `bundle.css` copiados do cofre (não edite); `extensoes.css`, `extensoes-ui.css`, `conta.css` e `home.css` (o que o Cerne acrescenta) |
-| `src/state/` (inclui `account.ts`: conta e perfil), `src/lib/`, `src/anim/`, `src/viewers/`, `src/icons/` | Preferências e token; funções puras (rotas, busca, diff); animações; visualizadores; ícones |
+| `src/state/` (inclui `account.ts`: conta e perfil), `src/lib/` (inclui `symbols.ts`, `zip.ts`, `tempo.ts`), `src/anim/`, `src/viewers/` (`data`, `media`: PDF, áudio, vídeo, fonte, ZIP, hex; `notebook`), `src/icons/` | Preferências e token; funções puras (rotas, busca, diff, símbolos, ZIP); animações; visualizadores; ícones |
 | `public/` | `tema-inicial.js` (claro/escuro antes do app), `404.html` e `restaurar-rota.js` (rotas no Pages), `sw.js` (offline), manifesto e ícones |
 
 ## Regras fixas
 - **Visual:** só tokens e classes `ks-*` e `key` do Kessleru; sem hex no código-fonte (exceção: SVG em `public/`), sem emoji, sem `transition: all`, `ease-in` nem `scale(0)`. Botões são `key` (ver `Knowledge/07 • Design System/Kessleru/Componentes/Kessleru - Button.md`).
 - **Token do GitHub:** só no cabeçalho `Authorization`. Nunca em URL, log, erro, exportação ou cache de service worker.
-- **Rede:** só `api.github.com` e `raw.githubusercontent.com`. Exceção: a foto de perfil vem de `avatars.githubusercontent.com`, só como `<img>` (sem token; liberada só em `img-src` da CSP). Nada de CDN ou serviço de terceiros.
+- **Rede:** só `api.github.com` e `raw.githubusercontent.com`. Exceção: a foto de perfil vem de `avatars.githubusercontent.com`, só como `<img>` (sem token; liberada só em `img-src` da CSP). Mídia e PDF tocam de `blob:` (`media-src` e `frame-src` da CSP). Nada de CDN ou serviço de terceiros.
 - **Proibido sempre:** testes automatizados, commit, push, publicar, instalar pacote sem a especificação pedir, alterar fora da área da tarefa.
 - **Leitura econômica:** procure com `grep` e leia por faixa de linhas. Não abra `bundle.css` nem arquivo grande inteiro.
 

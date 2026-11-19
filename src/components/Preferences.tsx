@@ -21,11 +21,18 @@ const ACCENT_LABELS: Record<AccentId, string> = {
   yellow: 'Yellow', green: 'Green', teal: 'Teal', sky: 'Sky', sapphire: 'Sapphire', blue: 'Blue', lavender: 'Lavender',
 };
 
-function Setting({ label, hint, children, stacked = false }: { label: string; hint?: string; children?: ReactNode; stacked?: boolean }) {
+function Setting({ label, hint, tip, children, stacked = false }: { label: string; hint?: string; tip?: string; children?: ReactNode; stacked?: boolean }) {
   return (
     <div className={`ks-setting${stacked ? ' is-stacked' : ''}`}>
       <div className="ks-setting__label">
-        <strong>{label}</strong>
+        <strong>
+          {label}
+          {tip && (
+            <span className="ks-setting__tip" data-tip={tip} tabIndex={0} aria-label={tip}>
+              <Icon name="info" size={13} />
+            </span>
+          )}
+        </strong>
         {hint && <span>{hint}</span>}
       </div>
       {children && <div className="ks-setting__control">{children}</div>}
@@ -201,7 +208,7 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
         </nav>
         <div className="ks-prefs__body" ref={bodyRef} onScroll={onBodyScroll}>
           <Section id="aparencia" title="Aparência">
-            <Setting label="Claro ou escuro" hint={covering ? 'O tema do editor está cobrindo a interface.' : p.appearance === 'system' ? `Segue o sistema do seu aparelho (agora: ${effectiveTheme(p) === 'latte' ? 'claro' : 'escuro'}).` : 'Fixo, não importa o sistema.'}>
+            <Setting label="Claro ou escuro" hint={covering ? 'Coberto pelo tema do editor' : p.appearance === 'system' ? `Agora: ${effectiveTheme(p) === 'latte' ? 'claro' : 'escuro'}` : undefined}>
               <div className="ks-segmented ks-appearance" role="group" aria-label="Claro ou escuro">
                 {(['system', 'light', 'dark'] as Appearance[]).map((a) => (
                   <button key={a} type="button" aria-pressed={p.appearance === a} disabled={covering} onClick={() => withThemeTransition(() => set({ appearance: a }))}>
@@ -211,7 +218,7 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
                 ))}
               </div>
             </Setting>
-            <Setting label="Sabor do escuro" hint={p.appearance === 'light' ? 'Vale quando o tema estiver escuro. O claro é o Latte.' : 'Os três sabores escuros do Catppuccin. O claro é o Latte.'}>
+            <Setting label="Sabor do escuro" tip="O claro é sempre o Latte">
               <div className="ks-theme">
                 <div className="ks-theme__themes is-three" role="group" aria-label="Sabor do escuro">
                   {DARK_THEMES.map((t) => (
@@ -222,7 +229,7 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
                 </div>
               </div>
             </Setting>
-            <Setting label="Cor de destaque" hint="Uma só, sempre da interface: aba ativa, linha selecionada, trecho achado." stacked>
+            <Setting label="Cor de destaque" tip="Aba ativa, linha selecionada, trecho achado" stacked>
               <div className="ks-theme">
                 <div className="ks-theme__accents" role="group" aria-label="Cor de destaque">
                   {ACCENTS.map((a) => (
@@ -231,7 +238,7 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
                 </div>
               </div>
             </Setting>
-            <Setting label="Tema do editor" hint="Igual à interface, ou um tema do VS Code por cima dela." stacked>
+            <Setting label="Tema do editor" hint="Temas do VS Code" stacked>
               <ul className="ks-themecards" aria-label="Tema do editor">
                 <ThemeCard id={null} label="Igual à interface" selected={p.editorTheme === null} onPick={() => set({ editorTheme: null })} />
                 {cards.map((t) => (
@@ -240,11 +247,11 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
               </ul>
             </Setting>
             {p.editorTheme !== null && (
-              <Setting label="Alcance do tema do editor" hint="Só o código; a área de trabalho (árvore, abas, caminho, código, divisores); ou tudo (barras, paleta, menus e preferências).">
+              <Setting label="Alcance do tema do editor" tip="Só o código; a área de trabalho; ou tudo, inclusive barras e menus">
                 <Segmented<EditorScope> label="Alcance do tema do editor" value={p.editorScope} onChange={(v) => set({ editorScope: v })} options={(Object.keys(SCOPE_LABELS) as EditorScope[]).map((id) => ({ id, label: SCOPE_LABELS[id] }))} />
               </Setting>
             )}
-            <Setting label="Importar tema" hint="Um arquivo .json de tema do VS Code. Ele entra na lista acima e vale como os outros.">
+            <Setting label="Importar tema" hint=".json do VS Code">
               <button type="button" className="key" onClick={() => fileInput.current?.click()}>Importar .json</button>
               <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void onFile(f); }} />
             </Setting>
@@ -255,43 +262,43 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
             <Setting label="Fonte">
               <Select ariaLabel="Fonte do código" value={p.font} onChange={(v) => set({ font: v as FontId })} options={(Object.keys(FONT_LABELS) as FontId[]).map((k) => ({ value: k, label: FONT_LABELS[k] }))} />
             </Setting>
-            <Setting label="Tamanho" hint="De 11 a 20 px.">
+            <Setting label="Tamanho">
               <input className="ks-range" type="range" min={11} max={20} step={1} value={p.size} aria-label="Tamanho da fonte" onChange={(e) => set({ size: Number(e.target.value) })} />
               <span className="ks-setting__value">{p.size}px</span>
             </Setting>
-            <Setting label="Altura da linha" hint="Automática segue a densidade.">
+            <Setting label="Altura da linha">
               <input className="ks-range" type="range" min={1.3} max={2} step={0.05} value={p.lineHeight ?? 1.6} aria-label="Altura da linha" onChange={(e) => set({ lineHeight: Number(e.target.value) })} />
               <span className="ks-setting__value">{p.lineHeight ?? 'auto'}</span>
               {p.lineHeight !== null && <button type="button" className="key" onClick={() => set({ lineHeight: null })}>Automática</button>}
             </Setting>
-            <Setting label="Ligaduras" hint="Junta símbolos como => e !== em um só desenho.">
+            <Setting label="Ligaduras" hint="=> e !== num só desenho">
               <Switch checked={p.ligatures} onChange={(v) => set({ ligatures: v })} label="Ligaduras" />
             </Setting>
             <Setting label="Largura do tab">
               <Select ariaLabel="Largura do tab" value={String(p.tab)} onChange={(v) => set({ tab: Number(v) })} options={[2, 3, 4, 6, 8].map((n) => ({ value: String(n), label: String(n) }))} />
             </Setting>
-            <Setting label="Quebra de linha" hint="Sem ela, o código rola na horizontal.">
+            <Setting label="Quebra de linha">
               <Switch checked={p.wrap} onChange={(v) => set({ wrap: v })} label="Quebra de linha" />
             </Setting>
           </Section>
 
           <Section id="arvore" title="Árvore">
-            <Setting label="Pacote de ícones" hint="Carregado só quando escolhido.">
+            <Setting label="Pacote de ícones">
               <Select ariaLabel="Pacote de ícones" value={p.icons} onChange={(v) => set({ icons: v as IconPack })} options={(Object.keys(PACK_LABELS) as IconPack[]).map((k) => ({ value: k, label: PACK_LABELS[k] }))} />
             </Setting>
-            <Setting label="Densidade" hint="Altura das linhas da árvore e do código.">
+            <Setting label="Densidade" tip="Altura das linhas da árvore e do código">
               <Segmented<Density> label="Densidade" value={p.density} onChange={(v) => set({ density: v })} options={[{ id: 'compact', label: 'Compacta' }, { id: 'normal', label: 'Normal' }, { id: 'comfortable', label: 'Confortável' }]} />
             </Setting>
-            <Setting label="Linhas de indentação" hint="Uma linha vertical por nível; a da pasta do arquivo aberto fica mais forte.">
+            <Setting label="Linhas de indentação" tip="Na árvore e no código. A do bloco atual fica mais forte.">
               <Segmented<Guides> label="Linhas de indentação" value={p.guides} onChange={(v) => set({ guides: v })} options={[{ id: 'always', label: 'Sempre' }, { id: 'hover', label: 'Ao passar o mouse' }, { id: 'none', label: 'Nunca' }]} />
             </Setting>
           </Section>
 
           <Section id="acessibilidade" title="Acessibilidade">
-            <Setting label="Alto contraste" hint="Texto e bordas no máximo de contraste. Também liga sozinho com prefers-contrast.">
+            <Setting label="Alto contraste" tip="Liga sozinho com prefers-contrast do sistema">
               <Switch checked={p.contrast} onChange={(v) => set({ contrast: v })} label="Alto contraste" />
             </Setting>
-            <Setting label="Movimento" hint="Reduzido: sem deslocamento, só esmaece. Automático segue o sistema.">
+            <Setting label="Movimento" tip="Reduzido: só esmaece. Automático: segue o sistema.">
               <Segmented label="Movimento" value={p.motion} onChange={(v) => set({ motion: v })} options={[{ id: 'auto', label: 'Automático' }, { id: 'reduced', label: 'Reduzido' }, { id: 'full', label: 'Completo' }]} />
             </Setting>
           </Section>
@@ -299,25 +306,25 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
           <Section id="token" title="Conta do GitHub">
             <Setting
               label={perfil ? (perfil.nome ?? perfil.login) : 'Sem conta'}
-              hint={conta.status === 'anonimo' ? 'Sem token são 60 chamadas por hora e só repositórios públicos. Com um token, 5 000 e os privados que você liberar.' : conta.status === 'invalido' ? 'O token guardado parou de funcionar. Troque por um novo.' : `@${perfil?.login ?? ''} · token ${conta.status === 'ok' && conta.lembrado ? 'guardado neste navegador' : 'guardado nesta sessão'}.`}
+              hint={conta.status === 'anonimo' ? '60 chamadas/h · só públicos' : conta.status === 'invalido' ? 'Token expirado' : `@${perfil?.login ?? ''} · ${conta.status === 'ok' && conta.lembrado ? 'neste navegador' : 'nesta aba'}`}
             >
               <Avatar conta={perfil} size={32} />
               <button type="button" className={`key${conta.status === 'anonimo' ? ' key--accent' : ''}`} onClick={onAccount}>{conta.status === 'anonimo' ? 'Entrar' : 'Gerenciar conta'}</button>
-              {conta.status !== 'anonimo' && <button type="button" className="key" onClick={() => { sair(); toast('Você saiu. O token foi apagado deste navegador.'); }}>Sair</button>}
+              {conta.status !== 'anonimo' && <button type="button" className="key" onClick={() => { sair(); toast('Você saiu.'); }}>Sair</button>}
             </Setting>
           </Section>
 
           <Section id="dados" title="Dados">
-            <Setting label="Exportar preferências" hint="Um .json com tudo, inclusive o alcance do tema do editor e os temas importados.">
+            <Setting label="Exportar preferências" tip="Um .json com tudo, inclusive temas importados">
               <button type="button" className="key" onClick={exportPrefs}>Exportar</button>
             </Setting>
-            <Setting label="Importar preferências" hint="Um .json exportado pelo Cerne (um tema do VS Code também entra).">
+            <Setting label="Importar preferências" hint=".json do Cerne ou tema do VS Code">
               <button type="button" className="key" onClick={() => fileInput.current?.click()}>Importar</button>
             </Setting>
-            <Setting label="Restaurar padrões" hint="Volta as preferências ao início. Recentes e token ficam.">
+            <Setting label="Restaurar padrões" hint="Recentes e token ficam">
               <button type="button" className="key" onClick={() => withThemeTransition(() => prefsStore.set(DEFAULT_PREFS))}>Restaurar</button>
             </Setting>
-            <Setting label="Apagar dados deste navegador" hint="Recentes, token, temas importados e preferências.">
+            <Setting label="Apagar dados deste navegador" hint="Recentes, token, temas e preferências">
               <button type="button" className="key" onClick={clearAll}>Apagar</button>
             </Setting>
           </Section>

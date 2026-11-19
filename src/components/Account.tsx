@@ -48,7 +48,7 @@ export function Account({ onClose, origin, onOpenRepo }: { onClose: () => void; 
         }}
       >
         <header className="ks-prefs__head">
-          <h2 id="conta-titulo">{logado ? 'Seu perfil no GitHub' : 'Entrar no GitHub'}</h2>
+          <h2 id="conta-titulo">{logado ? 'Perfil' : 'Entrar'}</h2>
           <button ref={closeRef} type="button" className="ks-icon-btn" aria-label="Fechar" onClick={onClose}>
             <Icon name="x" />
           </button>
@@ -58,7 +58,7 @@ export function Account({ onClose, origin, onOpenRepo }: { onClose: () => void; 
             <Perfil
               estado={estado}
               onTrocar={() => setTrocando(true)}
-              onSair={() => { sair(); toast('Você saiu. O token foi apagado deste navegador.'); }}
+              onSair={() => { sair(); toast('Você saiu.'); }}
               onOpenRepo={onOpenRepo ? (slug) => { onClose(); onOpenRepo(slug); } : undefined}
             />
           ) : (
@@ -131,7 +131,7 @@ function Perfil({ estado, onTrocar, onSair, onOpenRepo }: { estado: EstadoOk; on
         </div>
         <p className="ks-account__fine">
           <Icon name="shield" size={14} />
-          <span>Sair apaga o token deste navegador. No GitHub ele continua valendo até vencer ou ser apagado em Tokens no GitHub.</span>
+          <span>Sair apaga o token só daqui. No GitHub ele vale até vencer.</span>
         </p>
       </details>
     </div>
@@ -164,7 +164,7 @@ function RepoList({ onOpenRepo }: { onOpenRepo?: (slug: string) => void }) {
           Não deu para ler os repositórios: {r.erro} <button type="button" className="ks-linkbtn" onClick={() => carregarRepos(true)}>Tentar de novo</button>
         </p>
       ) : lista.length === 0 ? (
-        <p className="ks-repos__empty">{q ? 'Nenhum repositório combina.' : 'Nenhum repositório que este token enxergue. Confira o Repository access do token.'}</p>
+        <p className="ks-repos__empty">{q ? 'Nenhum repositório combina.' : 'Nenhum repositório neste token.'}</p>
       ) : (
         <ul className="ks-repos__list">
           {lista.map((x) => <RepoRow key={x.nome} repo={x} onOpen={onOpenRepo} />)}
@@ -223,14 +223,14 @@ function Login({ aviso, trocando, onCancelar, onEntrou }: { aviso: string | null
 
   const formato = tipoDoToken(texto);
   const dica = !texto.trim()
-    ? 'Começa com github_pat_ (fine-grained) ou ghp_ (clássico).'
+    ? ''
     : formato === 'fine-grained'
-      ? 'Formato de token fine-grained. Agora é só entrar.'
+      ? 'Fine-grained'
       : formato === 'clássico'
-        ? 'Formato de token clássico. Agora é só entrar.'
+        ? 'Clássico'
         : formato === 'outro'
-          ? 'Parece um token do GitHub. Vou conferir ao entrar.'
-          : 'Isso não parece um token do GitHub. Confira se copiou ele inteiro.';
+          ? 'Token do GitHub'
+          : 'Não parece um token. Copiou inteiro?';
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -240,7 +240,7 @@ function Login({ aviso, trocando, onCancelar, onEntrou }: { aviso: string | null
     try {
       const conta = await entrar(texto, lembrar);
       setTexto('');
-      toast(`Olá, ${conta.nome ?? conta.login}. Agora são ${milhar(conta.limite ?? 5000)} chamadas por hora.`);
+      toast(`Olá, ${conta.nome ?? conta.login}.`);
       onEntrou();
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Não foi possível conferir o token.');
@@ -256,25 +256,25 @@ function Login({ aviso, trocando, onCancelar, onEntrou }: { aviso: string | null
         {aviso && (
           <p className="ks-account__warn" role="alert">
             <Icon name="alert" size={16} />
-            <span><strong>O token guardado parou de funcionar.</strong> {aviso}</span>
+            <span><strong>Token expirado.</strong> {aviso}</span>
           </p>
         )}
         <div className="ks-login__hero">
           <span className="ks-login__mark"><Icon name="key" size={22} /></span>
           <div>
             <h3 id="login-titulo">{trocando ? 'Trocar o token' : 'Entre com um token do GitHub'}</h3>
-            <p>Sem senha nem cadastro: você cria um token pessoal no GitHub (leva 1 minuto) e cola aqui.</p>
+            <p>Crie no GitHub e cole aqui. Leva 1 minuto.</p>
           </div>
         </div>
 
-        <ul className="ks-login__perks">
-          <Perk icon="zap" title="5 000 chamadas por hora">Sem token são só 60, e cada pasta aberta gasta algumas.</Perk>
-          <Perk icon="lock" title="Repositórios privados">Só os que você liberar ao criar o token.</Perk>
-          <Perk icon="shield" title="Só leitura, só aqui">O Cerne não tem servidor: o token fica neste navegador.</Perk>
+        <ul className="ks-login__perks" aria-label="O que o token libera">
+          <Perk icon="zap" title="5 000/h" tip="Chamadas por hora (sem token: 60)" />
+          <Perk icon="lock" title="Privados" tip="Os repositórios que você liberar no token" />
+          <Perk icon="shield" title="Só aqui" tip="Sem servidor: o token fica neste navegador e só vai no cabeçalho para api.github.com" />
         </ul>
 
         <form className="ks-login__form" onSubmit={submit}>
-          <label htmlFor="conta-token" className="ks-login__label">Token de acesso pessoal</label>
+          <label htmlFor="conta-token" className="ks-login__label">Token</label>
           <div className={`ks-login__field${erro ? ' is-error' : ''}`}>
             <Icon name="key" />
             <input
@@ -305,22 +305,18 @@ function Login({ aviso, trocando, onCancelar, onEntrou }: { aviso: string | null
           <label className="ks-login__remember">
             <input className="ks-switch" type="checkbox" role="switch" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} />
             <span>
-              <strong>Lembrar neste navegador</strong>
-              <span>{lembrar ? 'Você continua conectado ao voltar. Desligue em computador compartilhado.' : 'O token some ao fechar a aba.'}</span>
+              <strong>Lembrar</strong>
+              <span>{lembrar ? 'Neste navegador' : 'Só nesta aba'}</span>
             </span>
           </label>
           <div className="ks-login__buttons">
             {onCancelar && <button type="button" className="key" onClick={onCancelar}>Cancelar</button>}
             <button type="submit" className="key key--accent ks-login__submit" disabled={!texto.trim() || busy} aria-busy={busy}>
-              {busy ? 'Conferindo no GitHub…' : trocando ? 'Usar este token' : 'Entrar'}
+              {busy ? 'Conferindo…' : trocando ? 'Usar este token' : 'Entrar'}
             </button>
           </div>
         </form>
 
-        <p className="ks-account__fine">
-          <Icon name="shield" size={14} />
-          <span>O token só vai no cabeçalho das chamadas para api.github.com. Nunca entra em links, histórico, logs nem no cache offline.</span>
-        </p>
       </section>
 
       <Guide tipo={tipo} onTipo={setTipo} onIrAoCampo={() => { input.current?.focus(); input.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }} />
@@ -328,11 +324,11 @@ function Login({ aviso, trocando, onCancelar, onEntrou }: { aviso: string | null
   );
 }
 
-function Perk({ icon, title, children }: { icon: IconName; title: string; children: ReactNode }) {
+function Perk({ icon, title, tip }: { icon: IconName; title: string; tip: string }) {
   return (
-    <li>
-      <span className="ks-login__perkicon"><Icon name={icon} size={16} /></span>
-      <span><strong>{title}</strong><span>{children}</span></span>
+    <li data-tip={tip} tabIndex={0} aria-label={`${title}: ${tip}`}>
+      <Icon name={icon} size={14} />
+      {title}
     </li>
   );
 }
@@ -353,15 +349,15 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
       <a className="ks-guide__cta" href={fine ? URL_FINE : URL_CLASSIC} target="_blank" rel="noopener noreferrer">
         <span className="ks-guide__ctaicon"><Icon name="zap" size={18} /></span>
         <span>
-          <strong>Atalho: abrir o GitHub com o formulário pronto</strong>
-          <span>{fine ? 'Nome, prazo de 90 dias e leitura de conteúdo já marcados. Confira, escolha os repositórios e gere.' : 'Nome e o escopo repo já marcados. Confira o prazo e gere.'}</span>
+          <strong>Abrir o formulário pronto</strong>
+          <span>{fine ? 'Nome, 90 dias e só leitura já marcados' : 'Nome e escopo repo já marcados'}</span>
         </span>
         <Icon name="external" size={16} />
       </a>
-      <p className="ks-guide__or"><span>ou siga o passo a passo</span></p>
+      <p className="ks-guide__or"><span>ou passo a passo</span></p>
 
       <ol className="ks-guide__steps">
-        <Step n={1} title="Abra as configurações de desenvolvedor" text={<>No GitHub, clique na <b>sua foto</b> no canto de cima, depois em <b>Settings</b>. No fim do menu da esquerda, entre em <b>Developer settings</b>.</>}>
+        <Step n={1} title="Settings > Developer settings" text={<>Sua foto, no canto de cima.</>}>
           <Shot url="github.com" caption="Foto > Settings">
             <div className="ks-shot__top">
               <span className="ks-shot__logo" />
@@ -380,10 +376,8 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
 
         <Step
           n={2}
-          title={fine ? 'Fine-grained tokens > Generate new token' : 'Tokens (classic) > Generate new token'}
-          text={fine
-            ? <>No menu da esquerda, abra <b>Personal access tokens</b>, escolha <b>Fine-grained tokens</b> e clique em <b>Generate new token</b>.</>
-            : <>Abra <b>Personal access tokens</b>, escolha <b>Tokens (classic)</b>, clique em <b>Generate new token</b> e depois em <b>Generate new token (classic)</b>.</>}
+          title="Generate new token"
+          text={fine ? <>Em Personal access tokens &gt; <b>Fine-grained tokens</b>.</> : <>Em Personal access tokens &gt; <b>Tokens (classic)</b>.</>}
         >
           <Shot url={fine ? 'github.com/settings/personal-access-tokens' : 'github.com/settings/tokens'} caption="Developer settings">
             <div className="ks-shot__split">
@@ -406,7 +400,7 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
           </Shot>
         </Step>
 
-        <Step n={3} title="Dê um nome e um prazo" text={<>{fine ? <>Em <b>Token name</b></> : <>Em <b>Note</b></>} escreva <b>Cerne</b> (qualquer nome serve). Em <b>Expiration</b>, 90 dias é um bom meio-termo: quando vencer, é só gerar outro.</>}>
+        <Step n={3} title="Nome e prazo" text={<><b>Cerne</b> e <b>90 days</b> servem.</>}>
           <Shot url={fine ? 'github.com/settings/personal-access-tokens/new' : 'github.com/settings/tokens/new'} caption="Nome e prazo">
             <div className="ks-shot__form">
               <span className="ks-shot__label">{fine ? 'Token name' : 'Note'}</span>
@@ -419,7 +413,7 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
         </Step>
 
         {fine ? (
-          <Step n={4} title="Escolha os repositórios" text={<>Em <b>Repository access</b>: <b>Public repositories</b> já basta para subir a cota. Para ler <b>privados</b>, marque <b>All repositories</b> ou <b>Only select repositories</b> e escolha quais.</>}>
+          <Step n={4} title="Repositórios" text={<>Públicos já bastam. Para privados, <b>Only select repositories</b>.</>}>
             <Shot url="github.com/settings/personal-access-tokens/new" caption="Repository access">
               <div className="ks-shot__form">
                 <span className="ks-shot__label">Repository access</span>
@@ -431,7 +425,7 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
             </Shot>
           </Step>
         ) : (
-          <Step n={4} title="Marque os escopos" text={<>Só repositórios <b>públicos</b>? Não marque nada. Para <b>privados</b>, marque <b>repo</b>. Atenção: no clássico, repo dá leitura <b>e escrita</b> em todos os seus repositórios. Por isso o fine-grained é mais seguro.</>}>
+          <Step n={4} title="Escopos" text={<>Públicos: nada. Privados: <b>repo</b> (lê e escreve em tudo; prefira o fine-grained).</>}>
             <Shot url="github.com/settings/tokens/new" caption="Select scopes">
               <div className="ks-shot__form">
                 <span className="ks-shot__label">Select scopes</span>
@@ -446,7 +440,7 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
         )}
 
         {fine && (
-          <Step n={5} title="Permissão: Contents, só leitura" text={<>Em <b>Permissions</b>, clique em <b>Add permissions</b>, escolha <b>Contents</b> e deixe em <b>Read-only</b>. <b>Metadata</b> entra sozinho. Não precisa de mais nada (o atalho acima já faz isso).</>}>
+          <Step n={5} title="Contents: Read-only" text={<>Em Permissions. O resto fica como está.</>}>
             <Shot url="github.com/settings/personal-access-tokens/new" caption="Permissions">
               <div className="ks-shot__form">
                 <span className="ks-shot__label">Permissions <span className="ks-shot__btn is-small">+ Add permissions</span></span>
@@ -457,7 +451,7 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
           </Step>
         )}
 
-        <Step n={fine ? 6 : 5} title="Gere e copie o token" text={<>Clique em <b>Generate token</b> no fim da página. O GitHub mostra o token <b>uma única vez</b>: copie na hora. Se perder, é só gerar outro.</>}>
+        <Step n={fine ? 6 : 5} title="Gere e copie" text={<>Ele aparece <b>uma vez só</b>.</>}>
           <Shot url={fine ? 'github.com/settings/personal-access-tokens' : 'github.com/settings/tokens'} caption="Token gerado">
             <div className="ks-shot__form">
               <span className="ks-shot__notice"><Icon name="check" size={12} /> Make sure to copy your token now.</span>
@@ -472,29 +466,28 @@ function Guide({ tipo, onTipo, onIrAoCampo }: { tipo: Tipo; onTipo: (t: Tipo) =>
         <li className="ks-step is-last">
           <span className="ks-step__n">{fine ? 7 : 6}</span>
           <div className="ks-step__text">
-            <h4>Cole aqui e entre</h4>
-            <p>Cole no campo <b>Token de acesso pessoal</b> e clique em <b>Entrar</b>. O Cerne confere com o GitHub e mostra sua foto.</p>
+            <h4>Cole e entre</h4>
             <button type="button" className="key" onClick={onIrAoCampo}><Icon name="arrowDown" size={14} /> Ir para o campo</button>
           </div>
         </li>
       </ol>
 
       <div className="ks-guide__faq">
-        <h4>Dúvidas comuns</h4>
-        <Faq q="É seguro colar meu token aqui?">
-          O Cerne é um site estático, sem servidor. O token fica no armazenamento do seu navegador e só é enviado ao api.github.com, no cabeçalho. Para ficar ainda mais tranquilo, use só leitura e um prazo curto.
+        <h4>Dúvidas</h4>
+        <Faq q="É seguro?">
+          O Cerne não tem servidor. O token fica neste navegador e só vai ao api.github.com, no cabeçalho. Use só leitura e prazo curto.
         </Faq>
-        <Faq q="Preciso de token para repositórios públicos?">
-          Não. Sem token tudo funciona, mas o GitHub libera só 60 chamadas por hora (abrir pastas, arquivos e histórico gasta algumas). Com token, são 5 000.
+        <Faq q="Preciso para públicos?">
+          Não. Sem token são 60 chamadas por hora; com token, 5 000.
         </Faq>
-        <Faq q="O repositório é de uma organização">
-          Ao criar o fine-grained, escolha a organização em <b>Resource owner</b>. Algumas organizações precisam aprovar o token antes. No clássico, se a organização usa SSO, clique em <b>Configure SSO</b> ao lado do token e autorize.
+        <Faq q="Repositório de organização">
+          Escolha a organização em <b>Resource owner</b>. Algumas pedem aprovação ou SSO (<b>Configure SSO</b>).
         </Faq>
-        <Faq q="O token venceu ou apareceu erro">
-          Gere outro no GitHub (o mesmo token não aparece de novo) e use <b>Trocar token</b> aqui. Erro de acesso a um repositório privado quase sempre é o token sem esse repositório em <b>Repository access</b>.
+        <Faq q="Venceu ou deu erro">
+          Gere outro e use <b>Trocar token</b>. Erro em privado: o repositório não está no <b>Repository access</b>.
         </Faq>
-        <Faq q="Como apago o token de vez?">
-          Aqui, <b>Sair</b> apaga do navegador. No GitHub, em Settings &gt; Developer settings &gt; Personal access tokens, clique em <b>Delete</b> ao lado dele.
+        <Faq q="Como apago?">
+          Aqui: <b>Sair</b>. No GitHub: <b>Delete</b> na lista de tokens.
         </Faq>
       </div>
     </section>

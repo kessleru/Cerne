@@ -5,7 +5,7 @@ import { getToken, subscribeToken } from '../../state/token';
 import { criarArmazenamento, PREFIXO_ANONIMO, prefixoDoToken, vigiarToken, type Armazenamento } from '../cache';
 import type { Commit, FileContent, Quota, Ref, RepoInfo, RepoSource, Tree, TreeEntry } from '../types';
 import { ACEITA_RAW, ACEITA_SHA, API, chamarApi, chamarRaw, RAW } from './api';
-import { codificarCaminho, contarLinhas, ehImagemRaster, LIMITE_GRANDE, lerPonteiroLfs, pareceBinario, tipoDoArquivo } from './arquivos';
+import { codificarCaminho, contarLinhas, ehImagemRaster, LIMITE_BINARIO, LIMITE_GRANDE, LIMITE_MIDIA, lerPonteiroLfs, midiaDe, pareceBinario, tipoDoArquivo } from './arquivos';
 import { RastreadorCota } from './cota';
 import { GitHubError, type Contexto } from './erros';
 
@@ -314,27 +314,37 @@ export class GitHubSource implements RepoSource {
     if (previsto === 'large') return { path, kind: 'large', size: entrada?.size ?? 0 };
     // imagem raster: não passa por texto; o visualizador mostra pelo raw ou por um blob:
     if (ehImagemRaster(path)) return this.lerImagem(slug, sha, path, entrada?.size ?? 0);
-    // binário conhecido só dispensa a leitura se for maior que um ponteiro LFS (que tem poucas centenas de bytes)
-    if (previsto === 'binary' && entrada && entrada.size >= 1024) return { path, kind: 'binary', size: entrada.size };
+    // binário grande: nem lê (só diz o tamanho)
+    if (previsto === 'binary' && entrada && entrada.size > LIMITE_BINARIO) return { path, kind: 'binary', size: entrada.size };
 
-    const token = getToken().value;
-    let buf: ArrayBuffer;
-    if (token) {
-      const url = `${API}/repos/${slugUrl(slug)}/contents/${codificarCaminho(path)}?ref=${sha}`;
-      const res = await chamarApi(url, { token, accept: ACEITA_RAW, ctx: { oque: 'arquivo', caminho: path } }, this.cota);
-      buf = await res.arrayBuffer();
-    } else {
-      buf = await chamarRaw(`${RAW}/${slugUrl(slug)}/${sha}/${codificarCaminho(path)}`, path);
+    const bytes = new Uint8Array(await this.lerBytes(slug, sha, path));
+    // PDF, áudio, vídeo, fonte e pacote: os bytes vão direto para o visualizador (um LFS ainda é reconhecido)
+    const midia = midiaDe(path);
+    if (midia && !(bytes.length < 1024 && lerPonteiroLfs(new TextDecoder().decode(bytes)))) {
+      if (bytes.length > LIMITE_MIDIA) return { path, kind: 'large', size: bytes.length };
+      return { path, kind: midia.kind, size: bytes.length, bytes, mime: midia.mime };
     }
-
-    const bytes = new Uint8Array(buf);
+    if (pareceBinario(bytes) || previsto === 'binary') {
+      const lfsBin = bytes.length < 1024 ? lerPonteiroLfs(new TextDecoder().decode(bytes)) : null;
+      if (lfsBin) return { path, kind: 'lfs', size: lfsBin.size, lfs: lfsBin };
+      return { path, kind: 'binary', size: bytes.length, bytes: bytes.length <= LIMITE_BINARIO ? bytes : undefined };
+    }
     if (bytes.length > LIMITE_GRANDE) return { path, kind: 'large', size: bytes.length };
-    if (pareceBinario(bytes)) return { path, kind: 'binary', size: bytes.length };
     const text = new TextDecoder('utf-8').decode(bytes);
     const lfs = bytes.length < 1024 ? lerPonteiroLfs(text) : null;
     if (lfs) return { path, kind: 'lfs', size: lfs.size, lfs };
-    if (previsto === 'binary') return { path, kind: 'binary', size: bytes.length };
     return { path, kind: previsto, size: bytes.length, text, lines: contarLinhas(text) };
+  }
+
+  /** Bytes crus: com token pela API (aceita privados), sem token pelo raw (não gasta cota). */
+  private async lerBytes(slug: string, sha: string, path: string): Promise<ArrayBuffer> {
+    const token = getToken().value;
+    if (token) {
+      const url = `${API}/repos/${slugUrl(slug)}/contents/${codificarCaminho(path)}?ref=${sha}`;
+      const res = await chamarApi(url, { token, accept: ACEITA_RAW, ctx: { oque: 'arquivo', caminho: path } }, this.cota);
+      return res.arrayBuffer();
+    }
+    return chamarRaw(`${RAW}/${slugUrl(slug)}/${sha}/${codificarCaminho(path)}`, path);
   }
 
   /** Imagem raster: sem token, o `<img>` lê o raw direto pelo SHA (não gasta cota); com token, os bytes viram um blob:. */

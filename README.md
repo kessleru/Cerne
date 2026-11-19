@@ -37,10 +37,18 @@ Sem token, o GitHub libera 60 chamadas por hora e só repositórios públicos. O
 - um guia ilustrado, passo a passo, mostra como criar o token (fine-grained, recomendado, ou clássico), com um atalho que abre o formulário do GitHub já preenchido (nome, 90 dias, Contents só leitura);
 - o token fica só neste navegador (ou só na aba, se "Lembrar" estiver desligado) e só vai no cabeçalho `Authorization`.
 
+## Arquivos
+
+Código com destaque em cerca de 150 linguagens (210 extensões e nomes como `Dockerfile` e `Makefile`), carregadas só quando o arquivo abre. Visualizadores próprios para Markdown, CSV/TSV, JSON, notebooks Jupyter, imagens (quadriculado, dimensões, 100%), PDF, áudio, vídeo, fontes, pacotes ZIP (lista do conteúdo) e binários (hexadecimal). PDF, mídia, fontes e pacotes vão até 25 MB; texto até 1 MB.
+
+## Código
+
+Guias de indentação (a do bloco atual mais forte), cabeçalho fixo do escopo ao rolar, ocorrências da palavra com duplo clique (Esc limpa) e **Ir para símbolo** (`Ctrl Shift O` ou `@` na paleta).
+
 ## Tema
 
 Claro ou escuro segue o sistema por padrão (Preferências > Aparência, o botão de monitor/sol/lua na página inicial ou a paleta, Ctrl K). Escolha também o sabor do escuro: Frappé, Macchiato ou Mocha. O claro é o Latte. `public/tema-inicial.js` aplica o tema antes do primeiro desenho, para não piscar.
 
 ## Atalhos
 
-`Ctrl K` paleta · `Ctrl G` ir à linha · `Ctrl F` buscar no arquivo · `Ctrl B` árvore · `Ctrl \` duas colunas · `Ctrl ,` preferências · `Alt L` copiar link das linhas · `Alt I` imagem do trecho · `Alt H` histórico · `Alt D` mudanças · `Alt Z` quebra de linha.
+`Ctrl K` paleta · `Ctrl G` ir à linha · `Ctrl Shift O` símbolo · `Ctrl F` buscar no arquivo · `Ctrl B` árvore · `Ctrl \` duas colunas · `Ctrl ,` preferências · `Alt L` copiar link das linhas · `Alt I` imagem do trecho · `Alt H` histórico · `Alt D` mudanças · `Alt Z` quebra de linha.

@@ -1,6 +1,6 @@
 // Tipos de dados do Cerne. A interface RepoSource é o contrato que a v1 vai implementar com o GitHub.
 
-export type FileKind = 'text' | 'markdown' | 'image' | 'csv' | 'json' | 'binary' | 'large' | 'lfs';
+export type FileKind = 'text' | 'markdown' | 'image' | 'csv' | 'json' | 'notebook' | 'pdf' | 'audio' | 'video' | 'font' | 'archive' | 'binary' | 'large' | 'lfs';
 
 export type TreeEntry = { path: string; size: number; kind: FileKind };
 
@@ -23,6 +23,10 @@ export type FileContent = {
   blob?: Blob;
   /** ponteiro LFS */
   lfs?: { oid: string; size: number };
+  /** PDF, áudio, vídeo, fonte, pacote ou binário: os bytes, para o visualizador e para baixar */
+  bytes?: Uint8Array;
+  /** tipo MIME dos bytes */
+  mime?: string;
 };
 
 export type Commit = {

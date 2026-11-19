@@ -5,11 +5,14 @@ import type { ThemeInfo } from '../code/protocol';
 import type { FileContent, RepoSource } from '../data/types';
 import type { LineRange } from '../lib/hash';
 import { formatSize, langOf } from '../lib/lang';
+import { midiaDe } from '../data/github/arquivos';
 import { effectiveEditorTheme, FONT_STACKS, type Prefs } from '../state/prefs';
 import { CsvView, ImageView, JsonView, MarkdownView } from '../viewers/data';
+import { ArchiveView, AudioView, FontView, HexView, PdfView, VideoView } from '../viewers/media';
+import { NotebookView } from '../viewers/notebook';
 import { Icon } from './Icon';
 import { CommitLoader } from './CommitLoader';
-import { PaneState, toast, useLoadingGate } from './parts';
+import { PaneState, useLoadingGate } from './parts';
 
 type Load = { status: 'loading' } | { status: 'ok'; file: FileContent } | { status: 'error'; message: string };
 
@@ -30,13 +33,15 @@ export function useFile(source: RepoSource, ref: string, path: string | null, no
   return state.key === key ? state.load : { status: 'loading' };
 }
 
-const RAW_KINDS = new Set(['markdown', 'csv', 'json', 'image']);
+const RAW_KINDS = new Set(['markdown', 'csv', 'json', 'image', 'notebook']);
 const RAW_LABEL: Record<string, [string, string]> = {
   markdown: ['Prévia', 'Código'],
   csv: ['Tabela', 'Texto'],
   json: ['Árvore', 'Texto'],
   image: ['Imagem', 'Código'],
+  notebook: ['Notebook', 'JSON'],
 };
+const BYTE_KINDS = new Set(['pdf', 'audio', 'video', 'font', 'archive', 'binary']);
 
 export type FilePaneProps = {
   source: RepoSource;
@@ -55,6 +60,8 @@ export type FilePaneProps = {
   onFirstPaint?: () => void;
   retry: number;
   onRetry: () => void;
+  /** o arquivo no github.com (para o que o Cerne não mostra inteiro) */
+  githubUrl?: string;
 };
 
 export function FilePane(p: FilePaneProps) {
@@ -99,22 +106,29 @@ export function FilePane(p: FilePaneProps) {
     );
   const f = load.file;
 
-  if (f.kind === 'binary')
+  const noGitHub = p.githubUrl ? (
+    <a className="key" href={p.githubUrl} target="_blank" rel="noopener noreferrer"><Icon name="external" size={14} /> Abrir no GitHub</a>
+  ) : undefined;
+  if (BYTE_KINDS.has(f.kind)) {
+    const v = { path, bytes: f.bytes, mime: f.mime, size: f.size };
     return (
-      <PaneState kind="warning" title="Arquivo binário" actions={<button type="button" className="key" onClick={() => toast('Demonstração: o download bruto não existe no protótipo.')}>Baixar arquivo bruto</button>}>
-        {path} tem {formatSize(f.size)} e não é texto. O Cerne não mostra conteúdo binário.
-      </PaneState>
+      <div className="ks-filepane" aria-busy={loading || undefined}>
+        <div className="ks-filepane__body">
+          {f.kind === 'pdf' ? <PdfView {...v} /> : f.kind === 'audio' ? <AudioView {...v} /> : f.kind === 'video' ? <VideoView {...v} /> : f.kind === 'font' ? <FontView {...v} /> : f.kind === 'archive' ? <ArchiveView {...v} /> : <HexView {...v} />}
+        </div>
+      </div>
     );
+  }
   if (f.kind === 'large')
     return (
-      <PaneState kind="warning" title="Arquivo grande demais" actions={<button type="button" className="key" onClick={() => toast('Demonstração: a v1 mostra só o começo do arquivo.')}>Ver o começo</button>}>
-        {path} tem {formatSize(f.size)}. Acima de 1 MB o destaque fica desligado e o arquivo não é carregado inteiro.
+      <PaneState kind="warning" title={`Grande demais · ${formatSize(f.size)}`} actions={noGitHub}>
+        Acima de {midiaDe(path) ? '25' : '1'} MB o Cerne não abre o arquivo.
       </PaneState>
     );
   if (f.kind === 'lfs')
     return (
-      <PaneState kind="warning" title="Arquivo no Git LFS">
-        {path} é um ponteiro para um arquivo de {formatSize(f.lfs?.size ?? 0)} guardado no Git LFS (oid {f.lfs?.oid.slice(0, 12)}...). O conteúdo real não está no repositório.
+      <PaneState kind="warning" title={`Git LFS · ${formatSize(f.lfs?.size ?? 0)}`} actions={noGitHub}>
+        O repositório guarda só um ponteiro (<code>{f.lfs?.oid.slice(0, 12)}</code>).
       </PaneState>
     );
 
@@ -160,6 +174,8 @@ export function FilePane(p: FilePaneProps) {
           <CsvView text={f.text} label={label} />
         ) : f.kind === 'json' && f.text ? (
           <JsonView text={f.text} label={label} />
+        ) : f.kind === 'notebook' && f.text ? (
+          <NotebookView text={f.text} editorTheme={editorTheme} />
         ) : f.kind === 'image' && (f.text !== undefined || f.src || f.blob) ? (
           <ImageView svg={f.text} src={f.src} blob={f.blob} alt={`Prévia de ${path}`} />
         ) : (
