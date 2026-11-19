@@ -10,19 +10,22 @@ export function Kbd({ children }: { children: ReactNode }) {
 }
 
 // ---------- Meter (cota da API) ----------
-export function Meter({ quota }: { quota: Quota }) {
+export function Meter({ quota, compact = false }: { quota: Quota; compact?: boolean }) {
   const p = quota.limit ? quota.remaining / quota.limit : 0;
   const low = p < 0.2;
   const reset = new Date(quota.resetAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const tip = `${quota.remaining} de ${quota.limit} chamadas · volta às ${reset}`;
   return (
-    <span className={`ks-meter${low ? ' is-low' : ''}`} title={`Volta às ${reset}`} role="status" aria-label={`Cota: ${quota.remaining} de ${quota.limit} chamadas`}>
+    <span className={`ks-meter${low ? ' is-low' : ''}`} data-tip={tip} tabIndex={0} role="status" aria-label={`Cota: ${tip}`}>
       <Icon name="meter" />
       <span className="ks-meter__bar" style={{ marginLeft: 6 }}>
         <span style={{ '--value': `${Math.round(p * 100)}%`, '--p': p } as React.CSSProperties} />
       </span>
-      <span style={{ marginLeft: 6 }}>
-        {quota.remaining} / {quota.limit}
-      </span>
+      {(!compact || low) && (
+        <span style={{ marginLeft: 6 }}>
+          {quota.remaining} / {quota.limit}
+        </span>
+      )}
     </span>
   );
 }

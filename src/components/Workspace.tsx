@@ -2,12 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { cascadeTree, markScreenReady, withThemeTransition } from '../anim/motion';
 import { type CodeViewHandle, type FindMatch } from '../code/CodeView';
-import type { ThemeInfo } from '../code/protocol';
 import type { Commit, FileContent, Quota, Ref, Tree as TreeData, TreeEntry } from '../data/types';
 import { PACK_LABELS } from '../icons/packs';
 import { formatLineHash, parseLineHash, type LineRange } from '../lib/hash';
 import { baseName, langOf } from '../lib/lang';
-import { extractSymbols } from '../lib/symbols';
+import { extractSymbols, hasSymbols } from '../lib/symbols';
 import { buildPath, parseRepoLink, type RepoLink } from '../lib/route';
 import { source } from '../data/source';
 import { ACCENTS, APPEARANCE_LABELS, DARK_THEMES, SCOPE_LABELS, prefsStore, reducedMotion, usePrefs, type Density, type EditorScope, type IconPack } from '../state/prefs';
@@ -87,7 +86,6 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
   const [diff, setDiff] = useState<{ commit: Commit; path: string; before: string; after: string } | null>(null);
   const [diffError, setDiffError] = useState<{ commit: Commit; path: string; message: string } | null>(null);
   const [activeFile, setActiveFile] = useState<{ file: FileContent; lines: string[] | null } | null>(null);
-  const [edInfo, setEdInfo] = useState<ThemeInfo | null>(null);
 
   const [palette, setPalette] = useState<PaletteOpen | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
@@ -410,17 +408,12 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
   const lang = active ? langOf(active) : null;
   // símbolos só quando a paleta abre (o arquivo pode ter 50 000 linhas)
   const symbols = useMemo(() => (palette && lines && active ? extractSymbols(lines, langOf(active).shiki) : undefined), [palette, lines, active]);
-  const themeLabel = prefs.editorTheme ? `${editorThemes.find((t) => t.id === prefs.editorTheme)?.label ?? ''} · ${SCOPE_LABELS[prefs.editorScope]}` : 'Igual à interface';
   const treeGate = useLoadingGate(!entries && !treeError);
   const viewGate = useLoadingGate((view === 'history' && !history) || (view === 'diff' && !diff));
 
   const sideStyle = { '--side-w': `${sideW}px` } as CSSProperties;
   const sidebar = (
     <aside className={`ks-pane ks-pane--side${narrow ? ' is-drawer' : ''}${narrow && drawer ? ' is-open' : ''}`} style={sideStyle} aria-label="Painel de arquivos">
-      <div className="ks-pane__head">
-        <span>arquivos</span>
-        <span className="ks-pane__count">{entries ? `${entries.length} arquivos` : ''}</span>
-      </div>
       {treeError ? (
         <PaneState kind="error" title="Não foi possível ler a árvore" actions={<button type="button" className="key" onClick={() => setReload((n) => n + 1)}>Tentar de novo</button>}>{treeError}</PaneState>
       ) : !entries ? (
@@ -522,7 +515,6 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
           find={findOpen ? find : null}
           handleRef={code}
           onFile={onFile}
-          onInfo={setEdInfo}
           readline={onFirstReadline}
           onFirstPaint={markScreenReady}
           retry={retry}
@@ -611,9 +603,9 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
           <kbd className="ks-kbd">K</kbd>
         </button>
         <div className="ks-appbar__actions">
-          <button type="button" className="ks-icon-btn" aria-label="Copiar link das linhas" data-tip="Copiar link das linhas" data-tip-key="Alt+L" onClick={copyLink}><Icon name="link" /></button>
-          <button type="button" className="ks-icon-btn" aria-label="Imagem do trecho" data-tip="Imagem do trecho" data-tip-key="Alt+I" onClick={(e) => { setSnipOrigin(centerOf(e)); openSnippet(); }}><Icon name="image" /></button>
-          {!narrow && <button type="button" className="ks-icon-btn" aria-label="Duas colunas" aria-pressed={!!split} data-tip="Duas colunas" data-tip-key="Ctrl+\\" onClick={() => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active))}><Icon name="columns" /></button>}
+          {selection && <button type="button" className="ks-icon-btn ks-appear" aria-label="Copiar link das linhas" data-tip="Copiar link das linhas" data-tip-key="Alt+L" onClick={copyLink}><Icon name="link" /></button>}
+          {selection && <button type="button" className="ks-icon-btn ks-appear" aria-label="Imagem do trecho" data-tip="Imagem do trecho" data-tip-key="Alt+I" onClick={(e) => { setSnipOrigin(centerOf(e)); openSnippet(); }}><Icon name="image" /></button>}
+          {!narrow && (tabs.length > 1 || !!split) && <button type="button" className="ks-icon-btn" aria-label="Duas colunas" aria-pressed={!!split} data-tip="Duas colunas" data-tip-key="Ctrl+\\" onClick={() => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active))}><Icon name="columns" /></button>}
           <button type="button" className="ks-icon-btn" aria-label="Preferências" data-tip="Preferências" data-tip-key="Ctrl+," onClick={(e) => { setPrefsOrigin(centerOf(e)); setPrefsOpen(true); }}><Icon name="settings" /></button>
           <AccountButton compact onClick={(e) => setAccountOpen(e.detail === 0 ? null : centerOf(e))} />
         </div>
@@ -628,12 +620,12 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
             <Tabs tabs={tabs} active={active} pack={prefs.icons} onSelect={(p) => openFile(p, 'pin')} onClose={closeTab} onPin={pinTab} />
           )}
           <div className="ks-pane__head">
-            {active ? <Breadcrumb path={active} onCrumb={(f) => { setSideOpen(true); setReveal({ path: f, nonce: Date.now() }); }} /> : <span>sem arquivo</span>}
+            {active ? <Breadcrumb path={active} onCrumb={(f) => { setSideOpen(true); setReveal({ path: f, nonce: Date.now() }); }} /> : <span />}
             <div className="ks-pane__tools">
-              <button type="button" className="ks-icon-btn" aria-label="Ir para símbolo" data-tip="Símbolos" data-tip-key="Ctrl+Shift+O" onClick={() => setPalette({ initial: '@', origin: null })} disabled={!active || !lines}><Icon name="list" /></button>
-              <button type="button" className="ks-icon-btn" aria-pressed={view === 'file'} aria-label="Ver o arquivo" data-tip="Ver o arquivo" onClick={() => setView('file')} disabled={!active}><Icon name="file" /></button>
-              <button type="button" className="ks-icon-btn" aria-pressed={view === 'history'} aria-label="Histórico do arquivo" data-tip="Histórico do arquivo" data-tip-key="Alt+H" onClick={() => openHistory(active)}><Icon name="history" /></button>
-              <button type="button" className="ks-icon-btn" aria-pressed={view === 'diff'} aria-label="Mudanças do último commit" data-tip="Mudanças do último commit" data-tip-key="Alt+D" disabled={!active || !commits[0]} onClick={() => active && commits[0] && openDiff(commits[0], active)}><Icon name="diff" /></button>
+              {view !== 'file' && active && <button type="button" className="ks-icon-btn" aria-label="Voltar ao arquivo" data-tip="Voltar ao arquivo" onClick={() => setView('file')}><Icon name="file" /></button>}
+              {view === 'file' && active && lines && hasSymbols(lang?.shiki ?? null) && <button type="button" className="ks-icon-btn" aria-label="Ir para símbolo" data-tip="Símbolos" data-tip-key="Ctrl+Shift+O" onClick={() => setPalette({ initial: '@', origin: null })}><Icon name="list" /></button>}
+              <button type="button" className="ks-icon-btn" aria-pressed={view === 'history'} aria-label="Histórico" data-tip="Histórico" data-tip-key="Alt+H" onClick={() => openHistory(active)}><Icon name="history" /></button>
+              {active && commits[0] && <button type="button" className="ks-icon-btn" aria-pressed={view === 'diff'} aria-label="Mudanças do último commit" data-tip="Última mudança" data-tip-key="Alt+D" onClick={() => openDiff(commits[0]!, active)}><Icon name="diff" /></button>}
             </div>
           </div>
           <div className={`ks-pane__body${demo ? ' is-demo' : ''}`} key={demo ?? view}>{body}</div>
@@ -664,16 +656,12 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
 
       <footer className="ks-appstatus">
         <div>
-          <span><Icon name="branch" />{refName}</span>
-          {!online && <span role="status">Sem conexão: mostrando o que já foi lido</span>}
+          {!online && <span role="status"><Icon name="wifiOff" /> Offline</span>}
           {lang && <span>{lang.label}</span>}
-          {lines && <span>{lines.length.toLocaleString('pt-BR')} linhas</span>}
-          {selection && <span>{selection.from === selection.to ? `Linha ${selection.from}` : `Linhas ${selection.from}-${selection.to}`}</span>}
+          {selection ? <span>{selection.from === selection.to ? `Ln ${selection.from}` : `Ln ${selection.from}-${selection.to}`}</span> : lines && <span>{lines.length.toLocaleString('pt-BR')} linhas</span>}
         </div>
         <div>
-          <Meter quota={quota} />
-          <span title="Tema do editor">{themeLabel}{edInfo ? '' : ''}</span>
-          <span>UTF-8 LF</span>
+          <Meter quota={quota} compact />
         </div>
       </footer>
 

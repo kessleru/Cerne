@@ -38,7 +38,7 @@ export function AccountButton({ onClick, compact = false }: { onClick: (e: React
   }
   if (e.status === 'anonimo') {
     return (
-      <button type="button" className="ks-accountbtn is-anon" onClick={onClick}>
+      <button type="button" className="ks-accountbtn is-anon" onClick={onClick} data-tip="Privados e 5 000 chamadas/h">
         <Icon name="user" />
         <span className="ks-accountbtn__name">Entrar</span>
       </button>

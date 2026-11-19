@@ -126,7 +126,14 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
   }, [section]);
 
   const covering = p.editorTheme !== null && p.editorScope === 'all';
-  const cards = useMemo(() => themes, [themes]);
+  // poucos cartões de cara (o escolhido sempre entre eles); o resto com "Ver todos"
+  const [allThemes, setAllThemes] = useState(false);
+  const cards = useMemo(() => {
+    if (allThemes || themes.length <= 6) return themes;
+    const first = themes.slice(0, 5);
+    const chosen = themes.find((t) => t.id === p.editorTheme);
+    return chosen && !first.includes(chosen) ? [...first.slice(0, 4), chosen] : first;
+  }, [themes, allThemes, p.editorTheme]);
 
   const onFile = async (file: File) => {
     setImportMsg(null);
@@ -245,6 +252,11 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
                   <ThemeCard key={t.id} id={t.id} label={t.label} dark={t.dark} selected={p.editorTheme === t.id} onPick={() => set({ editorTheme: t.id })} onRemove={t.imported ? () => { if (p.editorTheme === t.id) set({ editorTheme: null }); removeImportedTheme(t.id); } : undefined} />
                 ))}
               </ul>
+              {themes.length > 6 && (
+                <button type="button" className="ks-linkbtn ks-themecards__more" aria-expanded={allThemes} onClick={() => setAllThemes((v) => !v)}>
+                  {allThemes ? 'Ver menos' : `Ver todos (${themes.length + 1})`}
+                </button>
+              )}
             </Setting>
             {p.editorTheme !== null && (
               <Setting label="Alcance do tema do editor" tip="Só o código; a área de trabalho; ou tudo, inclusive barras e menus">

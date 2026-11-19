@@ -45,7 +45,7 @@ const introPlayed = () => {
 type Item = { id: string; label: string; value: string; icon: IconName; hint?: string; tag?: string };
 
 const EXAMPLES: Item[] = [
-  { id: 'ex1', label: 'kessleru/exemplo', value: 'github.com/kessleru/exemplo', icon: 'book', hint: 'repositório de demonstração' },
+  { id: 'ex1', label: 'kessleru/exemplo', value: 'github.com/kessleru/exemplo', icon: 'book' },
   { id: 'ex2', label: 'arquivo de 50 000 linhas', value: 'github.com/kessleru/exemplo/blob/main/src/generated/enorme.ts#L25000-L25004', icon: 'file', hint: 'src/generated/enorme.ts' },
   { id: 'ex3', label: 'tabela CSV', value: 'github.com/kessleru/exemplo/blob/main/data/cupons.csv', icon: 'file', hint: 'data/cupons.csv' },
 ];
@@ -181,7 +181,7 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
         <span className="ks-entry__itemname">{it.label}</span>
         {it.tag && <span className="ks-home__tag">{it.tag}</span>}
         {it.hint && <span className="ks-entry__itemhint">{it.hint}</span>}
-        {n > 0 && n < 10 && <Kbd>{n}</Kbd>}
+        {n > 0 && n < 10 && <span className="ks-home__num"><Kbd>Alt</Kbd><Kbd>{n}</Kbd></span>}
       </button>
     );
   };
@@ -280,14 +280,6 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
           ))}
         </div>
 
-        {conta.status === 'anonimo' && (
-          <button type="button" className="ks-home__cta" onClick={(e) => openAccount(e)} data-tip={`Sem token: ${quota.limit} chamadas por hora, só públicos`}>
-            <Icon name="key" size={14} />
-            <span><b>Entrar</b> · privados e 5 000 chamadas/h</span>
-            <Icon name="arrowRight" size={14} />
-          </button>
-        )}
-
         <ul className="ks-home__features" aria-label="O que o Cerne faz">
           <Feature icon="panelLeft" title="Árvore e abas" tip="Pastas, ícones por tipo e várias abas" />
           <Feature icon="search" title="Busca" tip="Arquivos, comandos, linhas e símbolos: Ctrl K" />
@@ -297,20 +289,23 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
         </ul>
       </div>
 
-      <footer className="ks-entry__footer ks-home__footer">
-        <div>
-          <Meter quota={quota} />
-          {conta.status === 'invalido' && (
-            <button type="button" className="ks-entry__tokenhint" onClick={() => setAccount(null)}>
-              <Icon name="alert" size={14} /> O token parou de funcionar. <b>Trocar</b>
-            </button>
-          )}
-        </div>
-        <div className="ks-entry__keys">
-          <span><Kbd>Ctrl</Kbd><Kbd>K</Kbd> campo</span>
-          <span><Kbd>Alt</Kbd><Kbd>1</Kbd> abrir o primeiro</span>
-        </div>
-      </footer>
+      {/* rodapé só quando há algo a dizer: cota baixa ou token vencido */}
+      {(quota.limit > 0 && quota.remaining / quota.limit < 0.2) || conta.status === 'invalido' ? (
+        <footer className="ks-entry__footer ks-home__footer">
+          <div>
+            <Meter quota={quota} />
+            {conta.status === 'invalido' ? (
+              <button type="button" className="ks-entry__tokenhint" onClick={() => setAccount(null)}>
+                <Icon name="alert" size={14} /> Token expirado. <b>Trocar</b>
+              </button>
+            ) : conta.status === 'anonimo' ? (
+              <button type="button" className="ks-entry__tokenhint" onClick={() => setAccount(null)}>
+                <b>Entrar para ter 5 000/h</b>
+              </button>
+            ) : null}
+          </div>
+        </footer>
+      ) : null}
 
       <Presence open={!!prefs}>{prefs && <Preferences section={prefs.section} onClose={() => setPrefs(null)} onAccount={() => { setPrefs(null); setAccount(null); }} />}</Presence>
       <Presence open={account !== false}>{account !== false && <Account origin={account} onClose={() => setAccount(false)} onOpenRepo={(slug) => submit(slug)} />}</Presence>

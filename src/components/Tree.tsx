@@ -170,7 +170,7 @@ export function Tree({
         <input
           ref={filterRef}
           className="ks-input"
-          placeholder="Filtrar arquivos"
+          placeholder={`Filtrar ${entries.length.toLocaleString('pt-BR')} arquivos`}
           aria-label="Filtrar arquivos"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

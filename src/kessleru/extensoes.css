@@ -806,3 +806,6 @@ a.key { text-decoration: none; }
 .ks-setting__label strong { display: inline-flex; align-items: center; gap: 6px; }
 .ks-setting__tip { display: inline-grid; place-items: center; color: var(--ctp-meta); cursor: help; border-radius: var(--radius-full); }
 @media (hover: hover) { .ks-setting__tip:hover { color: var(--ctp-text); } }
+/* botões que aparecem com o contexto (seleção de linhas) entram com um esmaecer curto */
+.ks-appear { animation: ks-fade var(--dur-fast) var(--ease-out); }
+.ks-prefs .ks-themecards__more { justify-self: start; margin-top: var(--space-1); font: 400 12px/18px var(--font-mono); }

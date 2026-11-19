@@ -90,3 +90,8 @@ export function extractSymbols(lines: string[], lang: string | null): CodeSymbol
   }
   return out;
 }
+
+/** O arquivo tem símbolos que valha listar? (Markdown e as linguagens com regras acima.) */
+export function hasSymbols(lang: string | null): boolean {
+  return !!lang && (lang === 'markdown' || lang === 'mdx' || lang in BY_LANG);
+}

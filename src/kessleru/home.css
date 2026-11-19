@@ -94,3 +94,7 @@
   .ks-home__go { padding-inline: 10px; }
   .ks-home__title br { display: none; }
 }
+/* atalho Alt+N só aparece com o ponteiro ou o foco na linha */
+.ks-home__num { display: inline-flex; gap: 2px; margin-left: auto; opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
+.ks-entry__item:is(:hover, :focus-visible) .ks-home__num { opacity: 1; }
+.ks-home__footer { position: sticky; bottom: 0; margin-top: auto; background: var(--ctp-base); }
