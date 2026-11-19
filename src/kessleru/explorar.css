@@ -32,17 +32,6 @@
 .ks-trail__title { flex: 1; min-width: 0; }
 .ks-trail__title h3 { margin: 0; color: var(--ctp-text); font: 600 18px/24px var(--font-mono); }
 .ks-trail__title p { margin: 2px 0 0; color: var(--ctp-subtext-0); font: 400 13px/19px var(--font-sans); }
-.ks-trail__progress { display: flex; flex: none; align-items: center; gap: var(--space-2); color: var(--ctp-subtext-0); font: 500 12px/16px var(--font-mono); }
-.ks-trail__bar { width: 72px; height: 6px; overflow: hidden; border-radius: var(--radius-full); background: var(--ctp-surface-0); }
-.ks-trail__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--ctp-green); transition: width var(--dur-ui) var(--ease-out); }
-
-.ks-trail__steps { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.ks-step2 { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--space-3); align-items: center; }
-/* trilho entre as etapas */
-.ks-step2::before { content: ''; position: absolute; top: calc(50% + 16px); bottom: calc(-50% - var(--space-3) + 16px); left: 13.5px; width: 1px; background: var(--ctp-surface-2); }
-.ks-step2:last-child::before { display: none; }
-.ks-step2__n { position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--ctp-surface-2); border-radius: var(--radius-full); background: var(--ctp-mantle); color: var(--ctp-subtext-0); font: 600 12px/1 var(--font-mono); }
-.ks-step2.is-done .ks-step2__n { border-color: var(--ctp-green); background: color-mix(in srgb, var(--ctp-green) 16%, var(--ctp-mantle)); color: var(--ctp-green); }
 
 .ks-repocard { display: flex; align-items: stretch; min-width: 0; border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-lg); background: var(--ctp-base); transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
 .ks-repocard__main { display: flex; flex: 1; align-items: center; gap: var(--space-3); min-width: 0; padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-lg) 0 0 var(--radius-lg); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -61,8 +50,6 @@
   .ks-repocard:hover .ks-repocard__go { opacity: 1; translate: 2px 0; }
   .ks-repocard__check:hover { color: var(--ctp-green); }
 }
-.ks-step2.is-done .ks-repocard { border-style: dashed; }
-.ks-step2.is-done .ks-repocard__name { color: var(--ctp-subtext-1); }
 
 .ks-ownerpic { display: grid; flex: none; place-items: center; overflow: hidden; border-radius: var(--radius-md); background: var(--ctp-surface-0); box-shadow: 0 0 0 1px var(--ctp-surface-1); color: var(--ctp-text); font: 600 14px/1 var(--font-mono); }
 .ks-ownerpic img { width: 100%; height: 100%; object-fit: cover; }
@@ -99,11 +86,7 @@
 @media (max-width: 559px) {
   .ks-trail { padding: var(--space-3); }
   .ks-trail__head { flex-wrap: wrap; }
-  .ks-trail__progress { width: 100%; }
-  .ks-trail__bar { flex: 1; }
-  .ks-step2 { grid-template-columns: minmax(0, 1fr); }
-  .ks-step2__n, .ks-step2::before { display: none; }
-  .ks-repocard__main { padding: var(--space-3); }
+      .ks-repocard__main { padding: var(--space-3); }
   .ks-repocard__nota { white-space: normal; }
   .ks-explore__tab { padding: 0 var(--space-3); }
 }
@@ -113,5 +96,27 @@
 .ks-facets__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 .ks-facets__label { width: 80px; color: var(--ctp-meta); font: 500 11px/16px var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
 .ks-facets .ks-famous__cat { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 10px; font-size: 11px; }
-.ks-chip--guia { background: color-mix(in srgb, var(--ctp-accent) 14%, transparent); color: var(--ctp-accent); }
 @media (max-width: 559px) { .ks-facets__label { width: 100%; } }
+
+/* ---------- lista do Estudar ---------- */
+.ks-trail__count { flex: none; padding: 2px 10px; border-radius: var(--radius-full); background: var(--ctp-surface-0); color: var(--ctp-subtext-1); font: 500 12px/18px var(--font-mono); }
+.ks-trail__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.ks-trail__search { display: flex; flex: 1; align-items: center; gap: var(--space-2); min-width: min(280px, 100%); height: 36px; padding: 0 var(--space-3); border: 1px solid var(--ctp-surface-1); border-radius: var(--radius-md); background: var(--ctp-base); color: var(--ctp-meta); }
+.ks-trail__search:focus-within { border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent); }
+.ks-trail__search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--ctp-text); font: 400 13px/18px var(--font-mono); }
+.ks-trail__search input::placeholder { color: var(--ctp-meta); }
+/* o limpar fica do tamanho dos filtros, não de um título */
+.ks-trail__tools .ks-linkbtn { font: 500 12px/18px var(--font-mono); }
+.ks-facets__n { margin-left: 2px; color: var(--ctp-meta); font-size: 10px; }
+.ks-facets__mais { height: 24px; padding: 0 8px; border: 0; border-radius: var(--radius-full); background: transparent; color: var(--ctp-accent); font: 500 11px/24px var(--font-mono); cursor: pointer; transition: background-color var(--dur-ui) var(--ease-out); }
+.ks-facets__mais:hover { background: color-mix(in srgb, var(--ctp-accent) 10%, transparent); }
+.ks-facets__mais:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: 2px; }
+.ks-repogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ks-repogrid .ks-repocard { height: 100%; animation: ks-fade var(--dur-ui) var(--ease-out) both; }
+.ks-repogrid .ks-repocard__nota { display: -webkit-box; white-space: normal; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ks-repogrid .ks-repocard__main { align-items: flex-start; }
+.ks-repocard.is-done { border-style: dashed; }
+.ks-chip--dom { background: color-mix(in srgb, var(--ctp-accent) 12%, transparent); color: var(--ctp-accent); }
+.ks-chip--stars { gap: 3px; background: none; color: var(--ctp-meta); }
+.ks-trail__more { justify-self: center; }
+.ks-explore__vazio { margin: 0; padding: var(--space-6); color: var(--ctp-subtext-0); font: 400 13px/20px var(--font-sans); text-align: center; }

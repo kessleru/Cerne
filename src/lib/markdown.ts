@@ -102,6 +102,13 @@ export function parseInline(src: string): Inline[] {
   return out;
 }
 
+// entidades que aparecem em READMEs escritos com HTML
+const ENTIDADES: Record<string, string> = {
+  nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", middot: '·', bull: '•', mdash: '—', ndash: '–', hellip: '…',
+  copy: '©', reg: '®', trade: '™', rarr: '→', larr: '←', uarr: '↑', darr: '↓', harr: '↔', times: '×', laquo: '«', raquo: '»',
+  deg: '°', para: '¶', sect: '§', check: '✓', star: '☆',
+};
+
 export function slug(text: string): string {
   return text
     .toLowerCase()
@@ -149,11 +156,13 @@ export function htmlParaMd(src: string): string {
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/?(p|div|details|picture|center|table|tr|td|th|tbody|thead)\b[^>]*>/gi, '\n')
         .replace(/<\/?[a-z][a-z0-9-]*\b[^>]*>/gi, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"');
+        .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+          if (e[0] === '#') {
+            const n = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1));
+            return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
+          }
+          return ENTIDADES[e.toLowerCase()] ?? m;
+        });
     })
     .join('');
 }

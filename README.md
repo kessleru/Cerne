@@ -37,14 +37,15 @@ Sem token, o GitHub libera 60 chamadas por hora e só repositórios públicos. O
 - um guia ilustrado, passo a passo, mostra como criar o token (fine-grained, recomendado, ou clássico), com um atalho que abre o formulário do GitHub já preenchido (nome, 90 dias, Contents só leitura);
 - o token fica só neste navegador (ou só na aba, se "Lembrar" estiver desligado) e só vai no cabeçalho `Authorization`.
 
-## Explorar e estudar
+## Explorar
 
-A página inicial mostra o catálogo (carrossel, números, um leitor de código e os temas) e três abas: **Para você**, **Estudar** e **Famosos**.
+A página inicial tem o campo de busca, um carrossel de repositórios e três abas:
 
-- **Catálogo** em `src/data/catalogo/`: uma entrada por repositório, com etiquetas (linguagem, temas, tipo, API, stack). As trilhas se montam sozinhas, uma por linguagem e uma por tema, e ganham filtros para comparar (por exemplo, a mesma API em Express, FastAPI e Axum).
-- **Visão geral**: abrir um repositório mostra primeiro uma página de introdução com dados, README renderizado (imagens, HTML comum, links internos e código colorido) e a estrutura do projeto.
-- **Guias de estudo** escritos para quem estuda sozinho: o que é, por que ler, o que saber antes, como ler, conceitos explicados (glossário compartilhado) e um roteiro que abre cada arquivo no trecho certo, com a barra "Passo X de N" sobre o código.
-- Como acrescentar repositórios e guias: [`docs/catalogo.md`](docs/catalogo.md). Para conferir arquivos e trechos no GitHub: `node scripts/conferir-guias.mjs`.
+- **Estudar:** projetos de pessoas (estudantes e devs) para estudar, com foco em back-end e APIs: uma API de livraria, um banco digital, um desafio técnico. Organizados por tema e por linguagem, com busca e filtros por assunto, stack e tipo de API. Escolhidos pela qualidade do README (`scripts/catalogo-estudo.mjs`).
+- **Famosos:** projetos grandes e conhecidos, por categoria.
+- **Para você:** recentes e, com login, seus repositórios.
+
+Abrir um repositório mostra primeiro a **visão geral**: dados do projeto e o README renderizado (imagens, HTML comum, links internos e código colorido), que dá o contexto antes do código. Como ampliar as listas: [`docs/catalogo.md`](docs/catalogo.md).
 
 ## Arquivos
 

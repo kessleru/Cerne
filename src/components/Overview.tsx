@@ -1,14 +1,13 @@
 // Visão geral de um repositório: a página de introdução antes do código.
-// Dados do repositório, o README renderizado, a estrutura do projeto e, quando há, o guia de estudo.
+// Dados do repositório, o README renderizado (é ele que contextualiza o projeto) e a estrutura.
 import { useEffect, useMemo, useState } from 'react';
-import { entradaDe, extDaLinguagem, termoDe, type Entrada } from '../data/catalogo';
-import type { Guia } from '../data/catalogo/tipos';
+import { entradaDe, extDaLinguagem, useEstudo, type Entrada } from '../data/catalogo';
 import type { RepoInfo, RepoSource, TreeEntry } from '../data/types';
 import { FileIcon } from '../icons/FileIcon';
 import { langOf } from '../lib/lang';
 import { milhar, relativo } from '../lib/tempo';
 import type { IconPack } from '../state/prefs';
-import { estudados, passosVistos } from '../state/estudo';
+import { estudados } from '../state/estudo';
 import { MarkdownView } from '../viewers/data';
 import { OwnerAvatar } from './Explore';
 import { Icon, type IconName } from './Icon';
@@ -25,8 +24,6 @@ type Props = {
   editorTheme: string | null;
   /** abre um arquivo (ou revela uma pasta) */
   onPath: (path: string) => void;
-  onStep: (i: number) => void;
-  onOpenRepo?: (slug: string) => void;
 };
 
 /** README da pasta (README.md, readme.md, README, README.rst...). */
@@ -41,8 +38,8 @@ export function findReadme(paths: string[], dir: string): string | null {
 }
 
 export function Overview(p: Props) {
+  useEstudo(); // redesenha quando a lista de estudo chega (chips de assunto e marcação de estudado)
   const entrada = entradaDe(p.owner, p.repo);
-  const guia = entrada?.guia ?? null;
   const readme = useMemo(() => (p.entries ? findReadme(p.entries.map((e) => e.path), '') : null), [p.entries]);
   const [texto, setTexto] = useState<{ path: string; text: string | null } | null>(null);
 
@@ -61,8 +58,8 @@ export function Overview(p: Props) {
   const dir = readme?.includes('/') ? readme.slice(0, readme.lastIndexOf('/')) : '';
   return (
     <div className="ks-ov">
-      <Hero {...p} entrada={entrada} guia={guia} readme={readme} />
-      <div className={`ks-ov__grid${guia ? ' has-guide' : ''}`}>
+      <Hero {...p} entrada={entrada} readme={readme} />
+      <div className="ks-ov__grid">
         <article className="ks-ov__readme" aria-label="README">
           <header className="ks-ov__cardhead">
             <Icon name="bookOpen" size={14} />
@@ -86,7 +83,6 @@ export function Overview(p: Props) {
           )}
         </article>
         <aside className="ks-ov__side">
-          {guia && entrada && <GuidePanel guia={guia} entrada={entrada} onStep={p.onStep} onPath={p.onPath} onOpenRepo={p.onOpenRepo} pack={p.pack} />}
           {p.entries && <Estrutura entries={p.entries} pack={p.pack} onPath={p.onPath} />}
         </aside>
       </div>
@@ -95,7 +91,7 @@ export function Overview(p: Props) {
 }
 
 // ---------- topo ----------
-function Hero({ owner, repo, info, entrada, guia, readme, pack, onStep, onPath }: Props & { entrada: Entrada | null; guia: Guia | null; readme: string | null }) {
+function Hero({ owner, repo, info, entrada, readme, pack, onPath }: Props & { entrada: Entrada | null; readme: string | null }) {
   const feitos = estudados.use();
   const slug = `${owner}/${repo}`;
   const feito = feitos.has(entrada?.repo ?? slug);
@@ -127,7 +123,7 @@ function Hero({ owner, repo, info, entrada, guia, readme, pack, onStep, onPath }
           {stats.map((s) => (
             <li key={s.tip} data-tip={s.tip}><Icon name={s.icon} size={14} />{s.texto}</li>
           ))}
-          {entrada && <li className={`ks-ov__nivel is-${entrada.nivel === 'iniciante' ? 'a' : entrada.nivel === 'intermediário' ? 'b' : 'c'}`}>{entrada.nivel}</li>}
+          {entrada?.dominio && <li className="ks-ov__nivel is-a">{entrada.dominio}</li>}
           {info?.archived && <li className="ks-ov__arch">arquivado</li>}
         </ul>
         {info?.topics && info.topics.length > 0 && (
@@ -135,11 +131,9 @@ function Hero({ owner, repo, info, entrada, guia, readme, pack, onStep, onPath }
         )}
       </div>
       <div className="ks-ov__actions">
-        {guia ? (
-          <button type="button" className="key key--accent" onClick={() => onStep(0)}><Icon name="play" size={14} /> Começar o guia</button>
-        ) : inicio ? (
-          <button type="button" className="key key--accent" onClick={() => onPath(inicio)}><Icon name="file" size={14} /> Abrir {inicio.split('/').pop()}</button>
-        ) : null}
+        {inicio && (
+          <button type="button" className="key key--accent" onClick={() => onPath(inicio)}><Icon name="code" size={14} /> Ver o código</button>
+        )}
         <div className="ks-ov__minor">
           {entrada && (
             <button type="button" className={`ks-icon-btn${feito ? ' is-on' : ''}`} aria-pressed={feito} aria-label={feito ? 'Desmarcar estudado' : 'Marcar como estudado'} data-tip={feito ? 'Estudado' : 'Marcar como estudado'} onClick={() => estudados.alternar(entrada.repo)}>
@@ -153,94 +147,6 @@ function Hero({ owner, repo, info, entrada, guia, readme, pack, onStep, onPath }
         </div>
       </div>
     </header>
-  );
-}
-
-// ---------- guia ----------
-function GuidePanel({ guia, entrada, onStep, onOpenRepo, pack }: { guia: Guia; entrada: Entrada; onStep: (i: number) => void; onPath: (p: string) => void; onOpenRepo?: (slug: string) => void; pack: IconPack }) {
-  const vistos = passosVistos.use();
-  const depois = guia.depois ? entradaDe(...(guia.depois.split('/') as [string, string])) : null;
-  const termos = guia.conceitos.map((c) => termoDe(c)).filter((t): t is NonNullable<typeof t> => !!t);
-  const feitos = guia.passos.filter((_, i) => vistos.has(`${entrada.repo}#${i}`)).length;
-  return (
-    <section className="ks-guide2" aria-labelledby="guia-titulo">
-      <header className="ks-guide2__head">
-        <span className="ks-guide2__badge"><Icon name="graduation" size={16} /></span>
-        <div>
-          <h2 id="guia-titulo">Guia de estudo</h2>
-          <p>{guia.passos.length} passos · {guia.tempo}</p>
-        </div>
-        {feitos > 0 && <span className="ks-guide2__prog" data-tip="Passos já abertos">{feitos}/{guia.passos.length}</span>}
-      </header>
-
-      <div className="ks-guide2__block">
-        <h3>O que é</h3>
-        <p>{guia.sobre}</p>
-      </div>
-      <div className="ks-guide2__block">
-        <h3>Por que ler</h3>
-        <p>{guia.porque}</p>
-      </div>
-      <div className="ks-guide2__block">
-        <h3>Antes de começar</h3>
-        <ul className="ks-guide2__antes">
-          {guia.antes.map((a) => <li key={a}><Icon name="check" size={12} />{a}</li>)}
-        </ul>
-      </div>
-      <div className="ks-guide2__tip">
-        <Icon name="lightbulb" size={16} />
-        <div>
-          <h3>Como ler</h3>
-          <p>{guia.comoLer}</p>
-        </div>
-      </div>
-
-      <div className="ks-guide2__block">
-        <h3>Roteiro de leitura</h3>
-        <ol className="ks-guide2__steps">
-          {guia.passos.map((s, i) => {
-            const visto = vistos.has(`${entrada.repo}#${i}`);
-            return (
-              <li key={i}>
-                <button type="button" className={`ks-guide2__step${visto ? ' is-seen' : ''}`} onClick={() => onStep(i)}>
-                  <span className="ks-guide2__n">{visto ? <Icon name="check" size={12} /> : i + 1}</span>
-                  <span className="ks-guide2__sbody">
-                    <strong>{s.titulo}</strong>
-                    <span className="ks-guide2__file"><FileIcon pack={pack} path={s.arquivo} className="ks-chip__icon" />{s.arquivo.split('/').pop()}{s.ancora && <code>{s.ancora.length > 28 ? s.ancora.slice(0, 28) + '…' : s.ancora}</code>}</span>
-                    <span className="ks-guide2__foco">{s.foco}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-
-      {termos.length > 0 && (
-        <div className="ks-guide2__block">
-          <h3>Conceitos</h3>
-          <dl className="ks-guide2__terms">
-            {termos.map((t) => (
-              <details key={t.termo}>
-                <summary><Icon name="chevronRight" size={12} />{t.termo}</summary>
-                <dd>{t.explicacao}</dd>
-              </details>
-            ))}
-          </dl>
-        </div>
-      )}
-
-      {depois && guia.depois && (
-        <div className="ks-guide2__block">
-          <h3>Depois deste</h3>
-          <button type="button" className="ks-guide2__next" onClick={() => onOpenRepo?.(guia.depois!)} disabled={!onOpenRepo}>
-            <OwnerAvatar repo={depois.repo} size={32} />
-            <span><strong>{depois.repo}</strong><span>{depois.nota}</span></span>
-            <Icon name="arrowRight" size={14} />
-          </button>
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -309,30 +215,5 @@ function Estrutura({ entries, pack, onPath }: { entries: TreeEntry[]; pack: Icon
         </>
       )}
     </section>
-  );
-}
-
-// ---------- barra do guia (enquanto lê o código) ----------
-export function GuideBar({ guia, passo, onStep, onOverview, onClose }: { guia: Guia; passo: number; onStep: (i: number) => void; onOverview: () => void; onClose: () => void }) {
-  const s = guia.passos[passo];
-  const [aberta, setAberta] = useState(true);
-  if (!s) return null;
-  return (
-    <div className={`ks-guidebar${aberta ? ' is-open' : ''}`} role="region" aria-label="Passo do guia">
-      <div className="ks-guidebar__row">
-        <span className="ks-guidebar__n">{passo + 1}/{guia.passos.length}</span>
-        <button type="button" className="ks-guidebar__title" aria-expanded={aberta} onClick={() => setAberta((v) => !v)}>
-          <strong>{s.titulo}</strong>
-          <Icon name="chevronDown" size={14} />
-        </button>
-        <div className="ks-guidebar__nav">
-          <button type="button" className="ks-icon-btn" aria-label="Passo anterior" data-tip="Anterior" disabled={passo === 0} onClick={() => onStep(passo - 1)}><Icon name="chevronLeft" /></button>
-          <button type="button" className="ks-icon-btn" aria-label="Próximo passo" data-tip="Próximo" disabled={passo === guia.passos.length - 1} onClick={() => onStep(passo + 1)}><Icon name="chevronRight" /></button>
-          <button type="button" className="ks-icon-btn" aria-label="Ver o guia inteiro" data-tip="Guia" onClick={onOverview}><Icon name="graduation" /></button>
-          <button type="button" className="ks-icon-btn" aria-label="Fechar o guia" data-tip="Fechar" onClick={onClose}><Icon name="x" /></button>
-        </div>
-      </div>
-      {aberta && <p className="ks-guidebar__foco"><Icon name="lightbulb" size={14} />{s.foco}</p>}
-    </div>
   );
 }

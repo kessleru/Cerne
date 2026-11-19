@@ -1,64 +1,74 @@
-// Índice do catálogo: junta as entradas de repos/*.ts e monta trilhas, famosos e buscas.
-// Trilhas não são escritas à mão: uma por linguagem e uma por tema, a partir das etiquetas de cada entrada.
-import { GLOSSARIO } from './glossario';
+// Índice do catálogo.
+// Famosos: projetos grandes e conhecidos, escritos à mão em famosos/*.ts.
+// Estudar: projetos de pessoas (estudantes e devs), gerados por scripts/catalogo-estudo.mjs em estudo.json.
+// As trilhas do Estudar se montam sozinhas: uma por tema e uma por linguagem.
+// estudo.json é grande e cresce: vem num pedaço separado, só quando alguém precisa (useEstudo).
+import { useEffect, useState } from 'react';
 import { LINGUAGENS } from './linguagens';
 import { TEMAS } from './temas';
-import type { CategoriaFamoso, Entrada, Nivel, Termo } from './tipos';
+import type { CategoriaFamoso, Entrada, Tema } from './tipos';
 
-// cada arquivo em repos/ exporta por padrão uma lista de entradas
-const modulos = import.meta.glob<{ default: Entrada[] }>('./repos/*.ts', { eager: true });
-export const CATALOGO: Entrada[] = Object.keys(modulos)
+const modulos = import.meta.glob<{ default: Entrada[] }>('./famosos/*.ts', { eager: true });
+export const FAMOSOS: Entrada[] = Object.keys(modulos)
   .sort()
   .flatMap((k) => modulos[k]!.default);
 
-const ORDEM_NIVEL: Record<Nivel, number> = { iniciante: 0, intermediário: 1, avançado: 2 };
-const porNivel = (lista: Entrada[]) => lista.map((e, i) => ({ e, i })).sort((a, b) => ORDEM_NIVEL[a.e.nivel] - ORDEM_NIVEL[b.e.nivel] || a.i - b.i).map((x) => x.e);
+// famosos de saída; os de estudo entram quando estudo.json chega
+const POR_REPO = new Map<string, Entrada>(FAMOSOS.map((e) => [e.repo.toLowerCase(), e]));
+
+type Bruto = { repo: string; nota: string; lang: string; temas: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number };
 
 export type Trilha = {
   id: string;
   titulo: string;
-  grupo: 'Linguagens' | 'Temas';
+  grupo: 'Temas' | 'Linguagens';
   ext?: string;
-  icone?: import('../../components/Icon').IconName;
+  icone?: Tema['icone'];
   cor: string;
-  resumo: string;
+  resumo?: string;
   repos: Entrada[];
 };
 
-export const TRILHAS: Trilha[] = [
-  ...LINGUAGENS.map((l) => ({ id: `lang-${l.ext}`, titulo: l.nome, grupo: 'Linguagens' as const, ext: l.ext, cor: l.cor, resumo: l.resumo, repos: porNivel(CATALOGO.filter((e) => e.lang === l.nome)) })),
-  ...TEMAS.map((t) => ({ id: t.id, titulo: t.titulo, grupo: 'Temas' as const, icone: t.icone, cor: t.cor, resumo: t.resumo, repos: porNivel(CATALOGO.filter((e) => e.temas.includes(t.id))) })),
-].filter((t) => t.repos.length > 0);
+export type Estudo = { lista: Entrada[]; trilhas: Trilha[] };
 
-export const CATEGORIAS: ('Todos' | CategoriaFamoso)[] = ['Todos', 'Sistemas', 'Linguagens', 'Dados', 'Web', 'IA', 'Ferramentas'];
-export const FAMOSOS: Entrada[] = CATALOGO.filter((e) => e.famoso);
+function montar(brutos: Bruto[]): Estudo {
+  const lista = brutos.map((e) => ({ ...e, tipo: 'projeto' as const }));
+  const trilhas: Trilha[] = [
+    ...TEMAS.map((t) => ({ id: t.id, titulo: t.titulo, grupo: 'Temas' as const, icone: t.icone, cor: t.cor, resumo: t.resumo, repos: lista.filter((e) => e.temas.includes(t.id)) })),
+    ...LINGUAGENS.map((l) => ({ id: `lang-${l.ext}`, titulo: l.nome, grupo: 'Linguagens' as const, ext: l.ext, cor: l.cor, repos: lista.filter((e) => e.lang === l.nome) })),
+  ].filter((t) => t.repos.length >= 5); // trilha com menos de 5 projetos fica de fora até crescer
+  for (const e of lista) POR_REPO.set(e.repo.toLowerCase(), e);
+  return { lista, trilhas };
+}
 
-const POR_REPO = new Map(CATALOGO.map((e) => [e.repo.toLowerCase(), e]));
+let estudo: Estudo | null = null;
+let carregando: Promise<Estudo> | null = null;
+export function carregarEstudo(): Promise<Estudo> {
+  carregando ??= import('./estudo.json').then((m) => (estudo = montar(m.default as Bruto[])));
+  return carregando;
+}
+
+/** A lista de estudo; null enquanto o pedaço ainda chega. */
+export function useEstudo(): Estudo | null {
+  const [e, setE] = useState(estudo);
+  useEffect(() => {
+    if (e) return;
+    let vivo = true;
+    carregarEstudo().then((x) => vivo && setE(x));
+    return () => {
+      vivo = false;
+    };
+  }, [e]);
+  return e;
+}
+
+export const CATEGORIAS: ('Todos' | CategoriaFamoso)[] = ['Todos', 'Aprender', 'Back-end', 'Front-end', 'IA', 'Dados', 'Sistemas', 'Linguagens', 'Ferramentas'];
+
 export const entradaDe = (owner: string, repo: string): Entrada | null => POR_REPO.get(`${owner}/${repo}`.toLowerCase()) ?? null;
-export const termoDe = (id: string): Termo | null => GLOSSARIO[id] ?? null;
 export const extDaLinguagem = (nome: string): string => LINGUAGENS.find((l) => l.nome === nome)?.ext ?? 'txt';
 
-/** Números para a página inicial. */
-export const NUMEROS = {
-  repos: CATALOGO.length,
-  guias: CATALOGO.filter((e) => e.guia).length,
-  passos: CATALOGO.reduce((n, e) => n + (e.guia?.passos.length ?? 0), 0),
-  trilhas: TRILHAS.length,
-  linguagens: new Set(CATALOGO.map((e) => e.lang)).size,
-};
-
-// conferências baratas só em desenvolvimento: erros de digitação aparecem no console na hora
 if (import.meta.env.DEV) {
-  const vistos = new Set<string>();
-  for (const e of CATALOGO) {
-    const k = e.repo.toLowerCase();
-    if (vistos.has(k)) console.warn(`[catálogo] repetido: ${e.repo}`);
-    vistos.add(k);
-    if (!LINGUAGENS.some((l) => l.nome === e.lang)) console.warn(`[catálogo] ${e.repo}: linguagem desconhecida "${e.lang}" (acrescente em linguagens.ts)`);
-    for (const t of e.temas) if (!TEMAS.some((x) => x.id === t)) console.warn(`[catálogo] ${e.repo}: tema desconhecido "${t}"`);
-    for (const c of e.guia?.conceitos ?? []) if (!GLOSSARIO[c]) console.warn(`[catálogo] ${e.repo}: termo sem explicação "${c}" (acrescente em glossario.ts)`);
-    if (e.guia?.depois && !POR_REPO.has(e.guia.depois.toLowerCase())) console.warn(`[catálogo] ${e.repo}: "depois" aponta para fora do catálogo (${e.guia.depois})`);
-  }
+  for (const e of FAMOSOS) if (!e.famoso) console.warn(`[catálogo] ${e.repo}: famoso sem categoria`);
 }
 
 export type { Entrada, Nivel } from './tipos';

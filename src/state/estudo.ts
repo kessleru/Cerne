@@ -1,4 +1,4 @@
-// Progresso de estudo, só neste navegador: repositórios marcados como estudados e passos de guia já abertos.
+// Progresso de estudo, só neste navegador: repositórios marcados como estudados.
 import { useSyncExternalStore } from 'react';
 
 function conjunto(chave: string) {
@@ -44,5 +44,3 @@ function conjunto(chave: string) {
 
 /** repositórios marcados como estudados (dono/nome) */
 export const estudados = conjunto('cerne:estudados');
-/** passos de guia já abertos ("dono/nome#índice") */
-export const passosVistos = conjunto('cerne:passos');

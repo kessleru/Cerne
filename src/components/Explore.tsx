@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { CATEGORIAS, FAMOSOS, TRILHAS, extDaLinguagem, type Entrada, type Nivel, type Trilha } from '../data/catalogo';
+import { CATEGORIAS, FAMOSOS, extDaLinguagem, useEstudo, type Entrada, type Trilha } from '../data/catalogo';
 import { FileIcon } from '../icons/FileIcon';
 import type { RepoLink } from '../lib/route';
 import { lerAvatar } from '../data/github/conta';
@@ -33,43 +33,40 @@ const gravar = (k: string, v: string) => {
 const alternarFeito = (repo: string) => estudados.alternar(repo);
 const useFeitos = () => estudados.use();
 
-/** Abre a visão geral do repositório (README e guia), não o código direto. */
+/** Abre a visão geral do repositório (topo e README), não o código direto. */
 const abrir = (r: Entrada, onOpen: (l: RepoLink) => void) => {
   const [owner, repo] = r.repo.split('/') as [string, string];
   onOpen({ owner, repo });
 };
 
-type Faceta = { campo: 'lang' | 'api' | 'stack' | 'tipo'; valor: string };
-const casa = (e: Entrada, f: Faceta | null) =>
-  !f || (f.campo === 'lang' ? e.lang === f.valor : f.campo === 'api' ? !!e.api?.includes(f.valor as never) : f.campo === 'stack' ? !!e.stack?.includes(f.valor) : e.tipo === f.valor);
+type Campo = 'lang' | 'dominio' | 'api' | 'stack';
+type Filtros = Partial<Record<Campo, string>>;
+const valorDe = (e: Entrada, c: Campo): string[] => (c === 'lang' ? [e.lang] : c === 'dominio' ? (e.dominio ? [e.dominio] : []) : c === 'api' ? (e.api ?? []) : (e.stack ?? []));
+const casa = (e: Entrada, f: Filtros) => (Object.keys(f) as Campo[]).every((c) => valorDe(e, c).includes(f[c]!));
 
-/** Filtros de comparação da trilha: só aparecem quando há o que comparar. */
-function facetasDe(t: Trilha): { titulo: string; campo: Faceta['campo']; valores: string[] }[] {
-  if (t.repos.length < 5) return [];
-  const conta = (vals: string[]) => {
+/** Filtros para comparar dentro da lista: só aparecem quando há o que comparar. */
+// Cada linha conta o que sobra com os outros filtros ligados; o valor escolhido continua visível.
+function facetasDe(lista: Entrada[], grupo: Trilha['grupo'], filtros: Filtros): { titulo: string; campo: Campo; valores: [string, number][] }[] {
+  const conta = (c: Campo, max: number) => {
+    const { [c]: escolhido, ...outros } = filtros;
     const m = new Map<string, number>();
-    for (const v of vals) m.set(v, (m.get(v) ?? 0) + 1);
-    return [...m].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).map(([v]) => v);
+    for (const e of lista) if (casa(e, outros)) for (const v of valorDe(e, c)) m.set(v, (m.get(v) ?? 0) + 1);
+    return [...m].filter(([v, n]) => n >= 2 || v === escolhido).sort((a, b) => b[1] - a[1]).slice(0, max);
   };
-  const out: { titulo: string; campo: Faceta['campo']; valores: string[] }[] = [];
-  if (t.grupo === 'Temas') out.push({ titulo: 'Linguagem', campo: 'lang', valores: conta(t.repos.map((e) => e.lang)) });
-  out.push({ titulo: 'API', campo: 'api', valores: conta(t.repos.flatMap((e) => e.api ?? [])) });
-  out.push({ titulo: 'Stack', campo: 'stack', valores: conta(t.repos.flatMap((e) => e.stack ?? [])).slice(0, 8) });
-  out.push({ titulo: 'Tipo', campo: 'tipo', valores: conta(t.repos.map((e) => e.tipo)) });
-  return out.filter((f) => f.valores.length > 1);
+  const out: { titulo: string; campo: Campo; valores: [string, number][] }[] = [];
+  if (grupo === 'Temas') out.push({ titulo: 'Linguagem', campo: 'lang', valores: conta('lang', 16) });
+  out.push({ titulo: 'Assunto', campo: 'dominio', valores: conta('dominio', 24) });
+  out.push({ titulo: 'Stack', campo: 'stack', valores: conta('stack', 40) });
+  out.push({ titulo: 'API', campo: 'api', valores: conta('api', 4) });
+  return out.filter((f) => f.valores.length > 1 || filtros[f.campo]);
 }
 
-const NIVEL_COR: Record<Nivel, string> = { iniciante: 'green', intermediário: 'yellow', avançado: 'peach' };
+const POR_PAGINA = 24;
+const VISIVEIS = 7; // chips por linha de filtro antes do +N
 
 /** Deixa a próxima visita à página inicial já numa aba (usado pela paleta). */
 export function abrirAbaExplorar(a: Aba) {
   gravar(ABA_KEY, a);
-}
-
-/** Deixa a aba Estudar aberta já numa trilha (usado pelos temas da página inicial). */
-export function abrirTrilha(id: string) {
-  gravar(ABA_KEY, 'estudar');
-  gravar(TRILHA_KEY, id);
 }
 
 export function Explore({ paraVoce, onOpen, padrao = 'voce' }: { paraVoce: ReactNode; onOpen: (l: RepoLink) => void; padrao?: Aba }) {
@@ -125,37 +122,55 @@ function Selo({ t, size = 36 }: { t: Pick<Trilha, 'ext' | 'icone' | 'cor'>; size
 }
 
 function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
-  const [id, setId] = useState(() => ler(TRILHA_KEY) ?? 'lang-py');
-  const [faceta, setFaceta] = useState<Faceta | null>(null);
+  const [id, setId] = useState(() => ler(TRILHA_KEY) ?? 'apis');
+  const [filtros, setFiltros] = useState<Filtros>({});
+  const [q, setQ] = useState('');
+  const [mostrar, setMostrar] = useState(POR_PAGINA);
+  const [abertas, setAbertas] = useState<Set<Campo>>(() => new Set());
   const iconPack = usePrefs().icons;
   const feitosAgora = useFeitos();
-  const t = TRILHAS.find((x) => x.id === id) ?? TRILHAS[0]!;
+  const estudo = useEstudo();
+  const TRILHAS = estudo?.trilhas ?? [];
+  const t = TRILHAS.find((x) => x.id === id) ?? TRILHAS[0];
   const pick = (x: string) => {
     setId(x);
-    setFaceta(null);
+    setFiltros({});
+    setQ('');
+    setMostrar(POR_PAGINA);
+    setAbertas(new Set());
     gravar(TRILHA_KEY, x);
   };
-  const facetas = facetasDe(t);
-  const lista = t.repos.filter((e) => casa(e, faceta));
-  const grupos = ['Linguagens', 'Temas'] as const;
-  const feitosNa = (tr: Trilha) => tr.repos.filter((r) => feitosAgora.has(r.repo)).length;
-  const n = feitosNa(t);
+  const lista = useMemo(() => {
+    if (!t) return [];
+    const termo = q.trim().toLowerCase();
+    return t.repos.filter((e) => casa(e, filtros) && (!termo || `${e.repo} ${e.nota} ${(e.stack ?? []).join(' ')} ${e.dominio ?? ''}`.toLowerCase().includes(termo)));
+  }, [t, filtros, q]);
+  const facetas = useMemo(() => (t ? facetasDe(t.repos, t.grupo, filtros) : []), [t, filtros]);
+  if (!estudo) return <p className="ks-explore__vazio" aria-busy="true">Carregando a lista de estudo…</p>;
+  if (!t) return <p className="ks-explore__vazio">A lista de estudo ainda está vazia. Rode node scripts/catalogo-estudo.mjs para montá-la.</p>;
+  const grupos = ['Temas', 'Linguagens'] as const;
+  const alternar = (c: Campo, v: string) => {
+    setFiltros((f) => {
+      const n = { ...f };
+      if (n[c] === v) delete n[c];
+      else n[c] = v;
+      return n;
+    });
+    setMostrar(POR_PAGINA);
+  };
   return (
     <div className="ks-study">
-      <nav className="ks-study__topics" aria-label="Trilhas">
+      <nav className="ks-study__topics" aria-label="Temas e linguagens">
         {grupos.map((g) => (
           <div key={g} className="ks-study__group">
             <p className="ks-study__glabel">{g}</p>
-            {TRILHAS.filter((x) => x.grupo === g).map((x) => {
-              const f = feitosNa(x);
-              return (
-                <button key={x.id} type="button" className="ks-study__topic" aria-current={x.id === t.id ? 'true' : undefined} onClick={() => pick(x.id)}>
-                  <Selo t={x} size={26} />
-                  <span className="ks-study__tname">{x.titulo}</span>
-                  <span className={`ks-study__tcount${f === x.repos.length ? ' is-done' : ''}`}>{f ? `${f}/${x.repos.length}` : x.repos.length}</span>
-                </button>
-              );
-            })}
+            {TRILHAS.filter((x) => x.grupo === g).map((x) => (
+              <button key={x.id} type="button" className="ks-study__topic" aria-current={x.id === t.id ? 'true' : undefined} onClick={() => pick(x.id)}>
+                <Selo t={x} size={26} />
+                <span className="ks-study__tname">{x.titulo}</span>
+                <span className="ks-study__tcount">{x.repos.length}</span>
+              </button>
+            ))}
           </div>
         ))}
       </nav>
@@ -165,36 +180,57 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
           <Selo t={t} size={48} />
           <div className="ks-trail__title">
             <h3 id="trilha-titulo">{t.titulo}</h3>
-            <p>{t.resumo}</p>
+            <p>{t.resumo ?? `Projetos de pessoas em ${t.titulo}.`}</p>
           </div>
-          <div className="ks-trail__progress" aria-label={`${n} de ${t.repos.length} estudados`} data-tip="Marque o que já estudou">
-            <span className="ks-trail__bar"><span style={{ width: `${(n / t.repos.length) * 100}%` }} /></span>
-            <span>{n}/{t.repos.length}</span>
-          </div>
+          <span className="ks-trail__count">{lista.length}</span>
         </header>
+        <div className="ks-trail__tools">
+          <span className="ks-trail__search">
+            <Icon name="search" size={14} />
+            <input value={q} onChange={(e) => { setQ(e.target.value); setMostrar(POR_PAGINA); }} placeholder="Buscar por nome, assunto ou stack" aria-label="Buscar nesta lista" />
+          </span>
+          {Object.keys(filtros).length > 0 && (
+            <button type="button" className="ks-linkbtn" onClick={() => setFiltros({})}>limpar filtros</button>
+          )}
+        </div>
         {facetas.length > 0 && (
-          <div className="ks-facets" role="group" aria-label="Comparar">
+          <div className="ks-facets" role="group" aria-label="Filtrar">
             {facetas.map((f) => (
               <div key={f.campo} className="ks-facets__row">
                 <span className="ks-facets__label">{f.titulo}</span>
-                {f.valores.map((v) => {
-                  const on = faceta?.campo === f.campo && faceta.valor === v;
+                {f.valores.filter(([v], i) => i < VISIVEIS || abertas.has(f.campo) || filtros[f.campo] === v).map(([v, n]) => {
+                  const on = filtros[f.campo] === v;
                   return (
-                    <button key={v} type="button" className="ks-famous__cat" aria-pressed={on} onClick={() => setFaceta(on ? null : { campo: f.campo, valor: v })}>
+                    <button key={v} type="button" className="ks-famous__cat" aria-pressed={on} onClick={() => alternar(f.campo, v)}>
                       {f.campo === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(v)}`} className="ks-chip__icon" />}
                       {v}
+                      <span className="ks-facets__n">{n}</span>
                     </button>
                   );
                 })}
+                {f.valores.length > VISIVEIS && (
+                  <button type="button" className="ks-facets__mais" aria-expanded={abertas.has(f.campo)} onClick={() => setAbertas((a) => new Set(a.has(f.campo) ? [...a].filter((x) => x !== f.campo) : [...a, f.campo]))}>
+                    {abertas.has(f.campo) ? 'menos' : `+${f.valores.length - VISIVEIS}`}
+                  </button>
+                )}
               </div>
             ))}
           </div>
         )}
-        <ol className="ks-trail__steps">
-          {lista.map((r, i) => (
-            <Etapa key={r.repo + i} n={i + 1} r={r} feito={feitosAgora.has(r.repo)} onOpen={onOpen} />
-          ))}
-        </ol>
+        {lista.length === 0 ? (
+          <p className="ks-explore__vazio">Nada com esses filtros.</p>
+        ) : (
+          <ul className="ks-repogrid">
+            {lista.slice(0, mostrar).map((r) => (
+              <RepoCard key={r.repo} r={r} feito={feitosAgora.has(r.repo)} onOpen={onOpen} />
+            ))}
+          </ul>
+        )}
+        {lista.length > mostrar && (
+          <button type="button" className="key ks-trail__more" onClick={() => setMostrar((m) => m + POR_PAGINA * 2)}>
+            Mostrar mais ({lista.length - mostrar})
+          </button>
+        )}
       </section>
     </div>
   );
@@ -269,36 +305,31 @@ export function OwnerAvatar({ repo, size = 36 }: { repo: string; size?: number }
   );
 }
 
-function Etapa({ n, r, feito, onOpen }: { n: number; r: Entrada; feito: boolean; onOpen: (l: RepoLink) => void }) {
+function RepoCard({ r, feito, onOpen }: { r: Entrada; feito: boolean; onOpen: (l: RepoLink) => void }) {
   const { icons } = usePrefs();
   const [dono, nome] = r.repo.split('/');
   return (
-    <li className={`ks-step2${feito ? ' is-done' : ''}`}>
-      <span className="ks-step2__n" aria-hidden="true">{feito ? <Icon name="check" size={14} /> : n}</span>
-      <div className="ks-repocard">
-        <button type="button" className="ks-repocard__main" onClick={() => abrir(r, onOpen)} aria-label={`Abrir ${r.repo}`}>
-          <OwnerAvatar repo={r.repo} />
-          <span className="ks-repocard__body">
-            <span className="ks-repocard__name"><span>{dono}/</span>{nome}</span>
-            <span className="ks-repocard__nota">{r.nota}</span>
-            <span className="ks-repocard__meta">
-              <span className="ks-chip"><FileIcon pack={icons} path={`x.${extDaLinguagem(r.lang)}`} className="ks-chip__icon" />{r.lang}</span>
-              <span className="ks-chip ks-nivel" style={{ '--c': `var(--ctp-${NIVEL_COR[r.nivel]})` } as React.CSSProperties}>{r.nivel}</span>
-              {r.guia && <span className="ks-chip ks-chip--guia" data-tip={`Guia com ${r.guia.passos.length} passos · ${r.guia.tempo}`}><Icon name="graduation" size={12} />guia</span>}
-              {r.api?.map((a) => <span key={a} className="ks-chip ks-chip--file">{a}</span>)}
-              {r.stack?.slice(0, 3).map((x) => <span key={x} className="ks-chip ks-chip--file">{x}</span>)}
-            </span>
+    <li className={`ks-repocard${feito ? ' is-done' : ''}`}>
+      <button type="button" className="ks-repocard__main" onClick={() => abrir(r, onOpen)} aria-label={`Abrir ${r.repo}`}>
+        <OwnerAvatar repo={r.repo} size={36} />
+        <span className="ks-repocard__body">
+          <span className="ks-repocard__name"><span>{dono}/</span>{nome}</span>
+          <span className="ks-repocard__nota">{r.nota}</span>
+          <span className="ks-repocard__meta">
+            <span className="ks-chip"><FileIcon pack={icons} path={`x.${extDaLinguagem(r.lang)}`} className="ks-chip__icon" />{r.lang}</span>
+            {r.dominio && <span className="ks-chip ks-chip--dom">{r.dominio}</span>}
+            {r.stack?.slice(0, 3).map((x) => <span key={x} className="ks-chip ks-chip--file">{x}</span>)}
+            {r.estrelas !== undefined && <span className="ks-chip ks-chip--stars"><Icon name="star" size={11} />{r.estrelas}</span>}
           </span>
-          <Icon name="arrowRight" size={16} className="ks-repocard__go" />
+        </span>
+      </button>
+      <div className="ks-repocard__side">
+        <button type="button" className={`ks-icon-btn ks-repocard__check${feito ? ' is-on' : ''}`} aria-pressed={feito} aria-label={feito ? 'Desmarcar estudado' : 'Marcar como estudado'} data-tip={feito ? 'Estudado' : 'Marcar como estudado'} onClick={() => alternarFeito(r.repo)}>
+          <Icon name="check" size={15} />
         </button>
-        <div className="ks-repocard__side">
-          <button type="button" className={`ks-icon-btn ks-repocard__check${feito ? ' is-on' : ''}`} aria-pressed={feito} aria-label={feito ? 'Desmarcar estudado' : 'Marcar como estudado'} data-tip={feito ? 'Estudado' : 'Marcar como estudado'} onClick={() => alternarFeito(r.repo)}>
-            <Icon name="check" size={15} />
-          </button>
-          <a className="ks-icon-btn" href={`https://github.com/${r.repo}`} target="_blank" rel="noopener noreferrer" aria-label={`${r.repo} no GitHub`} data-tip="No GitHub">
-            <Icon name="external" size={14} />
-          </a>
-        </div>
+        <a className="ks-icon-btn" href={`https://github.com/${r.repo}`} target="_blank" rel="noopener noreferrer" aria-label={`${r.repo} no GitHub`} data-tip="No GitHub">
+          <Icon name="external" size={14} />
+        </a>
       </div>
     </li>
   );

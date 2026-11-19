@@ -1,49 +1,19 @@
-// Tipos do catálogo do Explorar. Para acrescentar um repositório, veja docs/catalogo.md.
-import type { IconName } from '../../components/Icon';
+// Tipos do catálogo do Explorar. Como acrescentar repositórios: docs/catalogo.md.
 
 export type Nivel = 'iniciante' | 'intermediário' | 'avançado';
 
-/** Que tipo de projeto é: ajuda a pessoa a saber o que esperar do código. */
-export type Tipo = 'tutorial' | 'exemplo' | 'biblioteca' | 'framework' | 'aplicação' | 'ferramenta' | 'linguagem' | 'sistema';
+/** Que tipo de projeto é. "projeto" é o trabalho de uma pessoa (o que aparece no Estudar). */
+export type Tipo = 'projeto' | 'tutorial' | 'exemplo' | 'biblioteca' | 'framework' | 'aplicação' | 'ferramenta' | 'linguagem' | 'sistema';
 
 export type Api = 'REST' | 'GraphQL' | 'gRPC' | 'WebSocket' | 'tRPC' | 'RPC';
 
-export type CategoriaFamoso = 'Sistemas' | 'Linguagens' | 'Dados' | 'Web' | 'IA' | 'Ferramentas';
-
-/** Um passo do roteiro de leitura: um arquivo, um trecho e o que observar. */
-export type Passo = {
-  titulo: string;
-  arquivo: string;
-  /** texto exato que aparece no arquivo; o Cerne abre na primeira linha que o contém */
-  ancora?: string;
-  foco: string;
-};
-
-/** Guia escrito à mão para quem estuda sozinho. */
-export type Guia = {
-  /** o que é, em uma ou duas frases */
-  sobre: string;
-  /** por que vale ler este código */
-  porque: string;
-  /** o que já saber; se não souber, por onde começar */
-  antes: string[];
-  /** como atacar a leitura deste repositório */
-  comoLer: string;
-  /** ids do glossário (glossario.ts) */
-  conceitos: string[];
-  passos: Passo[];
-  /** tempo de leitura sugerido */
-  tempo: string;
-  /** próximo repositório sugerido (dono/nome, de preferência no catálogo) */
-  depois?: string;
-};
+export type CategoriaFamoso = 'Aprender' | 'Back-end' | 'Front-end' | 'IA' | 'Dados' | 'Sistemas' | 'Linguagens' | 'Ferramentas';
 
 export type Entrada = {
   /** dono/nome no GitHub */
   repo: string;
-  /** por que ler, em poucas palavras (aparece no cartão) */
+  /** do que se trata, em uma linha (aparece no cartão) */
   nota: string;
-  nivel: Nivel;
   /** nome da linguagem principal, como em linguagens.ts */
   lang: string;
   /** ids de temas.ts */
@@ -52,13 +22,17 @@ export type Entrada = {
   /** peças do projeto, para comparar (ex.: Express, Prisma, PostgreSQL, JWT) */
   stack?: string[];
   api?: Api[];
+  /** assunto do projeto (Livraria, E-commerce, Bancos e pagamentos...) */
+  dominio?: string;
+  nivel?: Nivel;
   /** arquivo para abrir primeiro (no ramo padrão) */
   start?: string;
-  /** aparece em Famosos, nesta categoria */
+  /** só nos Famosos: a categoria */
   famoso?: CategoriaFamoso;
-  guia?: Guia;
+  /** estrelas e último envio quando a lista foi gerada (Estudar) */
+  estrelas?: number;
+  atualizado?: string;
 };
 
-export type Linguagem = { nome: string; ext: string; cor: string; resumo: string };
-export type Tema = { id: string; titulo: string; icone: IconName; cor: string; resumo: string };
-export type Termo = { termo: string; explicacao: string };
+export type Linguagem = { nome: string; ext: string; cor: string };
+export type Tema = { id: string; titulo: string; icone: import('../../components/Icon').IconName; cor: string; resumo: string };

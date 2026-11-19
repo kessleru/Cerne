@@ -7,8 +7,8 @@ import { source } from '../data/source';
 import { Account } from './Account';
 import { AccountButton } from './Avatar';
 import { ThemeToggle } from './ThemeToggle';
-import { Explore, abrirTrilha } from './Explore';
-import { Leitor, Marquee, Numeros, Temas } from './Showcase';
+import { Explore } from './Explore';
+import { Marquee } from './Showcase';
 import { Icon, type IconName } from './Icon';
 import { Preferences } from './Preferences';
 import { Kbd, Meter, Presence, Rings, ToastHost } from './parts';
@@ -68,7 +68,6 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const [skipped, setSkipped] = useState(false);
   const [prefs, setPrefs] = useState<{ section?: string } | null>(null);
   const [account, setAccount] = useState<{ x: number; y: number } | null | false>(false);
-  const [exploreKey, setExploreKey] = useState(0);
   const [quota, setQuota] = useState<Quota>(source.quota());
   const conta = useConta();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -270,17 +269,7 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
         </section>
 
         <Marquee onOpen={(slug) => submit(slug)} />
-        <Numeros />
-        <div className="ks-home__showcase">
-          <div className="ks-home__sc-text">
-            <p className="ks-home__eyebrow2"><Icon name="graduation" size={14} /> Estude lendo código de verdade</p>
-            <h2 className="ks-home__h2">Cada repositório com um guia: o que é, como ler e um roteiro que abre o código no ponto certo.</h2>
-            <Leitor onOpen={(slug) => submit(slug)} />
-          </div>
-          <Temas onTrilha={(id) => { abrirTrilha(id); setExploreKey((k) => k + 1); requestAnimationFrame(() => document.getElementById('explorar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} />
-        </div>
         <Explore
-          key={exploreKey}
           onOpen={onOpen}
           padrao={recentItems.length || conta.status === 'ok' ? 'voce' : 'estudar'}
           paraVoce={
