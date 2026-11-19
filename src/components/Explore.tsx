@@ -193,7 +193,6 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const [abertas, setAbertas] = useState<Set<Campo>>(() => new Set());
   const [painel, setPainel] = useState(false);
   const [minEstrelas, setMinEstrelas] = useState(0);
-  const [semFeitos, setSemFeitos] = useState(false);
   const [ordem, setOrdem] = useState<Ordem>(() => (ORDENS.some((o) => o.value === ler(ORDEM_KEY)) ? (ler(ORDEM_KEY) as Ordem) : 'misturar'));
   // uma semente nova a cada lista aberta: a mesma lista nunca começa igual
   const [semente, setSemente] = useState(novaSemente);
@@ -231,10 +230,9 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     return t.repos.filter(
       (e) =>
         (e.estrelas ?? 0) >= minEstrelas &&
-        !(semFeitos && feitosAgora.has(e.repo)) &&
         (!termo || `${e.repo} ${e.nota} ${(e.stack ?? []).join(' ')} ${e.dominio ?? ''}`.toLowerCase().includes(termo)),
     );
-  }, [t, q, minEstrelas, semFeitos, feitosAgora]);
+  }, [t, q, minEstrelas]);
   const lista = useMemo(() => ordenar(base.filter((e) => casa(e, filtros)), ordem, semente), [base, filtros, ordem, semente]);
   const facetas = useMemo(() => (t ? facetasDe(base, t.grupo, filtros) : []), [t, base, filtros]);
   if (!estudo) return <p className="ks-explore__vazio" aria-busy="true">Carregando a lista de estudo…</p>;
@@ -251,11 +249,10 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     });
     setMostrar(POR_PAGINA);
   };
-  const ativos = qtdFiltros(filtros) + (minEstrelas ? 1 : 0) + (semFeitos ? 1 : 0);
+  const ativos = qtdFiltros(filtros) + (minEstrelas ? 1 : 0);
   const limparFiltros = () => {
     setFiltros({});
     setMinEstrelas(0);
-    setSemFeitos(false);
     setMostrar(POR_PAGINA);
   };
   const escolhidos = (Object.keys(filtros) as Campo[]).flatMap((c) => (filtros[c] ?? []).map((v) => [c, v] as const));
@@ -359,12 +356,6 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
                 <Icon name="x" size={12} />
               </button>
             )}
-            {semFeitos && (
-              <button type="button" className="ks-ativos__chip" onClick={() => setSemFeitos(false)} aria-label="Tirar filtro: sem os estudados">
-                sem os estudados
-                <Icon name="x" size={12} />
-              </button>
-            )}
             {escolhidos.map(([c, v]) => (
               <button key={c + v} type="button" className="ks-ativos__chip" onClick={() => alternar(c, v)} aria-label={`Tirar filtro: ${v}`}>
                 {c === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(v)}`} className="ks-chip__icon" />}
@@ -384,10 +375,6 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
                   {n === 0 ? 'qualquer' : `${n}+`}
                 </button>
               ))}
-              <label className="ks-facets__check">
-                <input type="checkbox" checked={semFeitos} onChange={(e) => setSemFeitos(e.target.checked)} />
-                esconder os que já estudei
-              </label>
             </div>
             {facetas.map((f) => {
               const vs = filtros[f.campo] ?? [];
