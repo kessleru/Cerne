@@ -809,3 +809,90 @@ a.key { text-decoration: none; }
 /* botões que aparecem com o contexto (seleção de linhas) entram com um esmaecer curto */
 .ks-appear { animation: ks-fade var(--dur-fast) var(--ease-out); }
 .ks-prefs .ks-themecards__more { justify-self: start; margin-top: var(--space-1); font: 400 12px/18px var(--font-mono); }
+
+/* ---------- esconder itens da árvore ---------- */
+/* o olho aparece na linha sob o ponteiro, em foco ou aberta; em tela de toque fica sempre visível */
+.ks-tree__hide {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ctp-meta);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ks-tree__row:is(:hover, :focus-visible, [aria-selected='true']) .ks-tree__hide { opacity: 1; }
+.ks-tree__hide:hover { background: var(--ctp-surface-0); color: var(--ctp-text); }
+@media (hover: none) { .ks-tree__hide { opacity: 0.7; } }
+
+.ks-hiddens { flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--ctp-surface-0); }
+.ks-hidden + .ks-hidden { border-top: 1px solid var(--ctp-surface-0); }
+.ks-hidden__head { display: flex; align-items: center; padding-right: var(--space-2); }
+.ks-hidden__toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--ctp-subtext-0);
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ks-hidden__toggle:hover { color: var(--ctp-text); }
+.ks-hidden__toggle:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: -2px; }
+.ks-hidden__toggle[aria-expanded='true'] > .ks-tree__chev { rotate: 90deg; }
+.ks-hidden__n { padding: 1px 6px; border-radius: var(--radius-full); background: var(--ctp-surface-0); color: var(--ctp-subtext-1); font-weight: 500; letter-spacing: 0; }
+.ks-hidden__list { max-height: min(32vh, 240px); margin: 0; padding: 0 0 var(--space-1); overflow: auto; list-style: none; animation: ks-fade var(--dur-fast) var(--ease-out); }
+.ks-hidden__item { display: flex; align-items: center; padding-right: var(--space-2); }
+.ks-hidden__item:hover { background: var(--ctp-surface-0); }
+.ks-hidden__item:hover .ks-hidden__act { color: var(--ctp-text); }
+.ks-hidden__name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 26px;
+  padding: 0 var(--space-2) 0 calc(var(--space-2) + 22px);
+  border: 0;
+  background: transparent;
+  color: var(--ctp-subtext-1);
+  font: 400 13px/1 var(--font-mono);
+  text-align: left;
+  white-space: nowrap;
+}
+button.ks-hidden__name { cursor: pointer; }
+button.ks-hidden__name:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: -2px; }
+.ks-hidden__name > span:not(.ks-tree__icon) { overflow: hidden; text-overflow: ellipsis; }
+.ks-hidden__dir { flex: 1 1 auto; color: var(--ctp-meta); font-size: 11px; }
+.ks-hidden__act {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ctp-meta);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ks-hidden__act:hover { background: var(--ctp-surface-1); color: var(--ctp-text); }
+.ks-hidden__act:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: 1px; }
+.ks-hidden__vazio { padding: var(--space-1) var(--space-3) var(--space-2); color: var(--ctp-meta); font: 400 12px/18px var(--font-sans); }
+:root[data-motion='reduce'] .ks-hidden__list { animation: none; }

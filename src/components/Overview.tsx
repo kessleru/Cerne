@@ -1,7 +1,7 @@
 // Visão geral de um repositório: a página de introdução antes do código.
 // Dados do repositório, o README renderizado (é ele que contextualiza o projeto) e a estrutura.
 import { useEffect, useMemo, useState } from 'react';
-import { entradaDe, extDaLinguagem, useEstudo, type Entrada } from '../data/catalogo';
+import { AREAS, entradaDe, extDaLinguagem, useEstudo, type Entrada } from '../data/catalogo';
 import type { RepoInfo, RepoSource, TreeEntry } from '../data/types';
 import { FileIcon } from '../icons/FileIcon';
 import { langOf } from '../lib/lang';
@@ -123,6 +123,7 @@ function Hero({ owner, repo, info, entrada, readme, pack, onPath }: Props & { en
           {stats.map((s) => (
             <li key={s.tip} data-tip={s.tip}><Icon name={s.icon} size={14} />{s.texto}</li>
           ))}
+          {entrada?.area && <li className="ks-ov__nivel is-a">{AREAS.find((a) => a.id === entrada.area)?.titulo}</li>}
           {entrada?.dominio && <li className="ks-ov__nivel is-a">{entrada.dominio}</li>}
           {info?.archived && <li className="ks-ov__arch">arquivado</li>}
         </ul>

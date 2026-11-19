@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { CATEGORIAS, FAMOSOS, extDaLinguagem, useEstudo, type Entrada, type Trilha } from '../data/catalogo';
+import { CATEGORIAS, FAMOSOS, extDaLinguagem, useEstudo, type Area, type Entrada, type Trilha } from '../data/catalogo';
 import { FileIcon } from '../icons/FileIcon';
 import type { RepoLink } from '../lib/route';
 import { lerAvatar } from '../data/github/conta';
@@ -14,6 +14,7 @@ import { Icon, type IconName } from './Icon';
 type Aba = 'voce' | 'estudar' | 'famosos';
 const ABA_KEY = 'cerne:explorar';
 const TRILHA_KEY = 'cerne:trilha';
+const AREA_KEY = 'cerne:area';
 
 const ler = (k: string) => {
   try {
@@ -54,7 +55,7 @@ function facetasDe(lista: Entrada[], grupo: Trilha['grupo'], filtros: Filtros): 
     return [...m].filter(([v, n]) => n >= 2 || v === escolhido).sort((a, b) => b[1] - a[1]).slice(0, max);
   };
   const out: { titulo: string; campo: Campo; valores: [string, number][] }[] = [];
-  if (grupo === 'Temas') out.push({ titulo: 'Linguagem', campo: 'lang', valores: conta('lang', 16) });
+  if (grupo !== 'Linguagens') out.push({ titulo: 'Linguagem', campo: 'lang', valores: conta('lang', 20) });
   out.push({ titulo: 'Assunto', campo: 'dominio', valores: conta('dominio', 24) });
   out.push({ titulo: 'Stack', campo: 'stack', valores: conta('stack', 40) });
   out.push({ titulo: 'API', campo: 'api', valores: conta('api', 4) });
@@ -122,7 +123,16 @@ function Selo({ t, size = 36 }: { t: Pick<Trilha, 'ext' | 'icone' | 'cor'>; size
 }
 
 function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
-  const [id, setId] = useState(() => ler(TRILHA_KEY) ?? 'apis');
+  const [areaId, setAreaId] = useState<Area>(() => (ler(AREA_KEY) as Area) || 'backend');
+  // a trilha lembrada é por área: voltar ao Front-end abre onde a pessoa estava
+  const [trilhaPor, setTrilhaPor] = useState<Record<string, string>>(() => {
+    try {
+      const v = JSON.parse(ler(TRILHA_KEY) ?? '{}');
+      return v && typeof v === 'object' ? (v as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  });
   const [filtros, setFiltros] = useState<Filtros>({});
   const [q, setQ] = useState('');
   const [mostrar, setMostrar] = useState(POR_PAGINA);
@@ -130,15 +140,27 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const iconPack = usePrefs().icons;
   const feitosAgora = useFeitos();
   const estudo = useEstudo();
-  const TRILHAS = estudo?.trilhas ?? [];
-  const t = TRILHAS.find((x) => x.id === id) ?? TRILHAS[0];
-  const pick = (x: string) => {
-    setId(x);
+  const area = estudo?.areas.find((a) => a.id === areaId) ?? estudo?.areas[0];
+  const TRILHAS = area?.trilhas ?? [];
+  const padrao = area?.id === 'backend' ? 'apis' : 'tudo';
+  const t = TRILHAS.find((x) => x.id === (trilhaPor[area?.id ?? ''] ?? padrao)) ?? TRILHAS[0];
+  const limpar = () => {
     setFiltros({});
     setQ('');
     setMostrar(POR_PAGINA);
     setAbertas(new Set());
-    gravar(TRILHA_KEY, x);
+  };
+  const pick = (x: string) => {
+    limpar();
+    if (!area) return;
+    const n = { ...trilhaPor, [area.id]: x };
+    setTrilhaPor(n);
+    gravar(TRILHA_KEY, JSON.stringify(n));
+  };
+  const pickArea = (a: Area) => {
+    limpar();
+    setAreaId(a);
+    gravar(AREA_KEY, a);
   };
   const lista = useMemo(() => {
     if (!t) return [];
@@ -147,8 +169,9 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   }, [t, filtros, q]);
   const facetas = useMemo(() => (t ? facetasDe(t.repos, t.grupo, filtros) : []), [t, filtros]);
   if (!estudo) return <p className="ks-explore__vazio" aria-busy="true">Carregando a lista de estudo…</p>;
-  if (!t) return <p className="ks-explore__vazio">A lista de estudo ainda está vazia. Rode node scripts/catalogo-estudo.mjs para montá-la.</p>;
+  if (!area || !t) return <p className="ks-explore__vazio">A lista de estudo ainda está vazia. Rode node scripts/catalogo-estudo.mjs para montá-la.</p>;
   const grupos = ['Temas', 'Linguagens'] as const;
+  const tudo = TRILHAS.find((x) => x.grupo === 'Tudo');
   const alternar = (c: Campo, v: string) => {
     setFiltros((f) => {
       const n = { ...f };
@@ -159,28 +182,64 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     setMostrar(POR_PAGINA);
   };
   return (
-    <div className="ks-study">
-      <nav className="ks-study__topics" aria-label="Temas e linguagens">
-        {grupos.map((g) => (
-          <div key={g} className="ks-study__group">
-            <p className="ks-study__glabel">{g}</p>
-            {TRILHAS.filter((x) => x.grupo === g).map((x) => (
-              <button key={x.id} type="button" className="ks-study__topic" aria-current={x.id === t.id ? 'true' : undefined} onClick={() => pick(x.id)}>
-                <Selo t={x} size={26} />
-                <span className="ks-study__tname">{x.titulo}</span>
-                <span className="ks-study__tcount">{x.repos.length}</span>
-              </button>
-            ))}
-          </div>
+    <div className="ks-studywrap">
+      <div className="ks-areas" role="tablist" aria-label="Áreas">
+        {estudo.areas.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            role="tab"
+            className="ks-areas__item"
+            aria-selected={a.id === area.id}
+            onClick={() => pickArea(a.id)}
+            onKeyDown={(e) => {
+              const i = estudo.areas.findIndex((x) => x.id === area.id);
+              const n = estudo.areas.length;
+              if (e.key === 'ArrowRight') pickArea(estudo.areas[(i + 1) % n]!.id);
+              else if (e.key === 'ArrowLeft') pickArea(estudo.areas[(i + n - 1) % n]!.id);
+            }}
+          >
+            <Selo t={a} size={28} />
+            <span className="ks-areas__name">{a.titulo}</span>
+            <span className="ks-areas__n">{a.repos.length.toLocaleString('pt-BR')}</span>
+          </button>
         ))}
+      </div>
+    <div className="ks-study">
+      <nav className="ks-study__topics" aria-label={`Temas e linguagens de ${area.titulo}`}>
+        {tudo && (
+          <div className="ks-study__group">
+            <button type="button" className="ks-study__topic" aria-current={tudo.id === t.id ? 'true' : undefined} onClick={() => pick(tudo.id)}>
+              <Selo t={tudo} size={26} />
+              <span className="ks-study__tname">Tudo</span>
+              <span className="ks-study__tcount">{tudo.repos.length}</span>
+            </button>
+          </div>
+        )}
+        {grupos.map((g) => {
+          const itens = TRILHAS.filter((x) => x.grupo === g);
+          if (!itens.length) return null;
+          return (
+            <div key={g} className="ks-study__group">
+              <p className="ks-study__glabel">{g}</p>
+              {itens.map((x) => (
+                <button key={x.id} type="button" className="ks-study__topic" aria-current={x.id === t.id ? 'true' : undefined} onClick={() => pick(x.id)}>
+                  <Selo t={x} size={26} />
+                  <span className="ks-study__tname">{x.titulo}</span>
+                  <span className="ks-study__tcount">{x.repos.length}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
-      <section className="ks-trail" aria-labelledby="trilha-titulo" key={t.id}>
+      <section className="ks-trail" aria-labelledby="trilha-titulo" key={`${area.id}/${t.id}`}>
         <header className="ks-trail__head">
           <Selo t={t} size={48} />
           <div className="ks-trail__title">
             <h3 id="trilha-titulo">{t.titulo}</h3>
-            <p>{t.resumo ?? `Projetos de pessoas em ${t.titulo}.`}</p>
+            <p>{t.grupo === 'Linguagens' ? `${area.titulo} em ${t.titulo}: projetos de pessoas.` : t.resumo}</p>
           </div>
           <span className="ks-trail__count">{lista.length}</span>
         </header>
@@ -232,6 +291,7 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
           </button>
         )}
       </section>
+    </div>
     </div>
   );
 }

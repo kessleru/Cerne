@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useOcultos } from '../state/ocultos';
 import type { KeyboardEvent } from 'react';
 import type { TreeEntry } from '../data/types';
 import { FileIcon } from '../icons/FileIcon';
@@ -35,11 +36,12 @@ export function buildTree(entries: TreeEntry[]): Node {
 
 type Row = { node: Node; depth: number };
 
-function flatten(node: Node, expanded: ReadonlySet<string>, keep: ReadonlySet<string> | null, depth = 0, out: Row[] = []): Row[] {
+function flatten(node: Node, expanded: ReadonlySet<string>, keep: ReadonlySet<string> | null, hidden: ReadonlySet<string>, depth = 0, out: Row[] = []): Row[] {
   for (const c of node.children) {
     if (keep && !keep.has(c.path)) continue;
+    if (hidden.has(c.path)) continue;
     out.push({ node: c, depth });
-    if (c.dir && expanded.has(c.path)) flatten(c, expanded, keep, depth + 1, out);
+    if (c.dir && expanded.has(c.path)) flatten(c, expanded, keep, hidden, depth + 1, out);
   }
   return out;
 }
@@ -51,8 +53,11 @@ export function Tree({
   onOpen,
   filterRef,
   focusPath,
+  repoKey,
 }: {
   entries: TreeEntry[];
+  /** dono/nome: os itens escondidos são guardados por repositório */
+  repoKey: string;
   active: string | null;
   pack: IconPack;
   onOpen: (path: string, mode: 'preview' | 'pin') => void;
@@ -61,6 +66,8 @@ export function Tree({
   focusPath?: { path: string; nonce: number } | null;
 }) {
   const root = useMemo(() => buildTree(entries), [entries]);
+  const { ocultos, esconder, mostrar, mostrarTodos } = useOcultos(repoKey);
+  const hidden = useMemo(() => new Set(ocultos), [ocultos]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['src']));
   const [query, setQuery] = useState('');
   const [focus, setFocus] = useState<string | null>(null);
@@ -96,8 +103,8 @@ export function Tree({
 
   const rows = useMemo(() => {
     const exp = keep ? new Set([...keep]) : expanded;
-    return flatten(root, exp, keep);
-  }, [root, expanded, keep]);
+    return flatten(root, exp, keep, hidden);
+  }, [root, expanded, keep, hidden]);
 
   // abrir um arquivo rola até a linha dele; abrir ou fechar pasta não mexe na rolagem
   const scrolled = useRef<string | null>(null);
@@ -158,6 +165,11 @@ export function Tree({
         if (n.dir) toggle(n.path);
         else onOpen(n.path, e.key === 'Enter' ? 'pin' : 'preview');
         break;
+      case 'Delete':
+        // esconde e passa o foco para a linha seguinte (ou a anterior, se era a última)
+        move(rows[idx + 1]?.node.path ?? rows[idx - 1]?.node.path);
+        esconder(n.path);
+        break;
       default:
         return;
     }
@@ -192,9 +204,97 @@ export function Tree({
         onPointerDown={() => (input.current = 'mouse')}
       >
         {rows.length === 0 && <p className="ks-tree__none">Nenhum arquivo combina.</p>}
-        {renderRows(rows, { expanded, keep, active, tabbable, scope: parentOf(tabbable ?? active), pack, toggle, onOpen, setFocus })}
+        {renderRows(rows, { expanded, keep, active, tabbable, scope: parentOf(tabbable ?? active), pack, toggle, onOpen, setFocus, esconder })}
       </div>
+      <Ocultos entries={entries} ocultos={ocultos} pack={pack} onOpen={onOpen} mostrar={mostrar} mostrarTodos={mostrarTodos} />
     </>
+  );
+}
+
+/** Duas seções no pé do painel, fechadas de início (como as do VS Code): arquivos e pastas escondidos. */
+function Ocultos({
+  entries,
+  ocultos,
+  pack,
+  onOpen,
+  mostrar,
+  mostrarTodos,
+}: {
+  entries: TreeEntry[];
+  ocultos: string[];
+  pack: IconPack;
+  onOpen: (p: string, m: 'preview' | 'pin') => void;
+  mostrar: (p: string) => void;
+  mostrarTodos: (ps: string[]) => void;
+}) {
+  const [aberta, setAberta] = useState<'arquivos' | 'pastas' | null>(null);
+  const { arquivos, pastas } = useMemo(() => {
+    const files = new Set(entries.map((e) => e.path));
+    const dirs = new Set<string>();
+    for (const e of entries) {
+      const parts = e.path.split('/');
+      for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/'));
+    }
+    const porNome = (a: string, b: string) => baseName(a).localeCompare(baseName(b), 'pt-BR');
+    return { arquivos: ocultos.filter((p) => files.has(p)).sort(porNome), pastas: ocultos.filter((p) => dirs.has(p)).sort(porNome) };
+  }, [entries, ocultos]);
+
+  const secao = (id: 'arquivos' | 'pastas', titulo: string, itens: string[], dir: boolean) => {
+    const open = aberta === id;
+    const corpo = `ocultos-${id}`;
+    return (
+      <section className={`ks-hidden${open ? ' is-open' : ''}`} aria-label={titulo}>
+        <div className="ks-hidden__head">
+          <button type="button" className="ks-hidden__toggle" aria-expanded={open} aria-controls={corpo} onClick={() => setAberta(open ? null : id)}>
+            <Icon name="chevronRight" className="ks-tree__chev" />
+            <span className="ks-hidden__title">{titulo}</span>
+            {itens.length > 0 && <span className="ks-hidden__n">{itens.length}</span>}
+          </button>
+          {open && itens.length > 1 && (
+            <button type="button" className="ks-hidden__act" data-tip="Mostrar todos na árvore" aria-label={`Mostrar todos os ${id} na árvore`} onClick={() => mostrarTodos(itens)}>
+              <Icon name="eye" size={14} />
+            </button>
+          )}
+        </div>
+        {open && (
+          <ul className="ks-hidden__list" id={corpo}>
+            {itens.length === 0 ? (
+              <li className="ks-hidden__vazio">
+                {dir ? 'Nenhuma pasta escondida.' : 'Nenhum arquivo escondido.'} Use o olho ao lado de um item da árvore.
+              </li>
+            ) : (
+              itens.map((p) => (
+                <li key={p} className="ks-hidden__item">
+                  {dir ? (
+                    <span className="ks-hidden__name">
+                      <FileIcon pack={pack} path={p} dir className="ks-tree__icon" />
+                      <span>{baseName(p)}</span>
+                      {p.includes('/') && <span className="ks-hidden__dir">{p.slice(0, p.lastIndexOf('/'))}</span>}
+                    </span>
+                  ) : (
+                    <button type="button" className="ks-hidden__name" onClick={() => onOpen(p, 'preview')} onDoubleClick={() => onOpen(p, 'pin')} data-tip="Abrir sem mostrar na árvore">
+                      <FileIcon pack={pack} path={p} className="ks-tree__icon" />
+                      <span>{baseName(p)}</span>
+                      {p.includes('/') && <span className="ks-hidden__dir">{p.slice(0, p.lastIndexOf('/'))}</span>}
+                    </button>
+                  )}
+                  <button type="button" className="ks-hidden__act" data-tip="Mostrar na árvore" aria-label={`Mostrar ${p} na árvore`} onClick={() => mostrar(p)}>
+                    <Icon name="eyeOff" size={14} />
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </section>
+    );
+  };
+
+  return (
+    <div className="ks-hiddens">
+      {secao('arquivos', 'Arquivos ocultos', arquivos, false)}
+      {secao('pastas', 'Pastas ocultas', pastas, true)}
+    </div>
   );
 }
 
@@ -214,6 +314,7 @@ type Ctx = {
   toggle: (p: string) => void;
   onOpen: (p: string, m: 'preview' | 'pin') => void;
   setFocus: (p: string) => void;
+  esconder: (p: string) => void;
 };
 
 // As linhas vêm achatadas; a estrutura ARIA (linha + grupo) é refeita pela profundidade.
@@ -260,6 +361,20 @@ function Row({ node, depth, open, selected, tabbable, c }: { node: Node; depth: 
       {node.dir ? <Icon name="chevronRight" className="ks-tree__chev" /> : <span className="ks-tree__spacer" />}
       <FileIcon pack={c.pack} path={node.path} dir={node.dir} open={node.dir && open} className="ks-tree__icon" />
       <span className="ks-tree__name">{node.name}</span>
+      <button
+        type="button"
+        className="ks-tree__hide"
+        tabIndex={-1}
+        data-tip={node.dir ? 'Esconder pasta (Delete)' : 'Esconder arquivo (Delete)'}
+        aria-label={`Esconder ${node.name}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          c.esconder(node.path);
+        }}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        <Icon name="eye" size={14} />
+      </button>
     </div>
   );
 }

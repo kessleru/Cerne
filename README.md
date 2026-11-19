@@ -41,7 +41,7 @@ Sem token, o GitHub libera 60 chamadas por hora e só repositórios públicos. O
 
 A página inicial tem o campo de busca, um carrossel de repositórios e três abas:
 
-- **Estudar:** projetos de pessoas (estudantes e devs) para estudar, com foco em back-end e APIs: uma API de livraria, um banco digital, um desafio técnico. Organizados por tema e por linguagem, com busca e filtros por assunto, stack e tipo de API. Escolhidos pela qualidade do README (`scripts/catalogo-estudo.mjs`).
+- **Estudar:** projetos de pessoas (estudantes e devs) para estudar, em oito áreas (back-end, front-end, mobile, dados e IA, DevOps, jogos, ferramentas e sistemas). Em cada área, organizados por tema e por linguagem, com busca e filtros por assunto, stack e tipo de API. Escolhidos pela qualidade do README (`scripts/catalogo-estudo.mjs`).
 - **Famosos:** projetos grandes e conhecidos, por categoria.
 - **Para você:** recentes e, com login, seus repositórios.
 
@@ -49,7 +49,7 @@ Abrir um repositório mostra primeiro a **visão geral**: dados do projeto e o R
 
 ## Arquivos
 
-Código com destaque em cerca de 150 linguagens (210 extensões e nomes como `Dockerfile` e `Makefile`), carregadas só quando o arquivo abre. Visualizadores próprios para Markdown, CSV/TSV, JSON, notebooks Jupyter, imagens (quadriculado, dimensões, 100%), PDF, áudio, vídeo, fontes, pacotes ZIP (lista do conteúdo) e binários (hexadecimal). PDF, mídia, fontes e pacotes vão até 25 MB; texto até 1 MB.
+Código com destaque em cerca de 150 linguagens (210 extensões e nomes como `Dockerfile` e `Makefile`), carregadas só quando o arquivo abre. Na árvore, o olho ao lado de um item (ou a tecla Delete) esconde o arquivo ou a pasta; eles vão para **Arquivos ocultos** e **Pastas ocultas**, no pé do painel, de onde voltam com um clique. A escolha fica guardada neste navegador, por repositório. Visualizadores próprios para Markdown, CSV/TSV, JSON, notebooks Jupyter, imagens (quadriculado, dimensões, 100%), PDF, áudio, vídeo, fontes, pacotes ZIP (lista do conteúdo) e binários (hexadecimal). PDF, mídia, fontes e pacotes vão até 25 MB; texto até 1 MB.
 
 ## Código
 

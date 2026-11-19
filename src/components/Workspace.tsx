@@ -451,7 +451,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
       ) : !entries ? (
         treeGate ? <PaneState kind="loading" title="Carregando a árvore" /> : null
       ) : (
-        <Tree entries={entries} active={active} pack={prefs.icons} onOpen={openFile} filterRef={filterInput} focusPath={reveal} />
+        <Tree entries={entries} active={active} pack={prefs.icons} onOpen={openFile} filterRef={filterInput} focusPath={reveal} repoKey={`${session.owner}/${session.repo}`} />
       )}
     </aside>
   );

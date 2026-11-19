@@ -10,7 +10,10 @@ export function Marquee({ onOpen }: { onOpen: (slug: string) => void }) {
   // faixa de cima: famosos; de baixo: projetos de pessoas (os de README mais completo), em sentidos opostos
   const estudo = useEstudo();
   const [a, b] = useMemo(() => {
-    const pessoas = estudo?.lista.slice(0, 40) ?? [];
+    // um pouco de cada área, alternando, para mostrar a variedade
+    const pessoas: Entrada[] = [];
+    const filas = (estudo?.areas ?? []).map((a) => a.repos.slice(0, 40));
+    for (let i = 0; pessoas.length < 40 && filas.some((f) => i < f.length); i++) for (const f of filas) if (f[i] && pessoas.length < 40) pessoas.push(f[i]!);
     return pessoas.length >= 10 ? [FAMOSOS.slice(0, 40), pessoas] : [FAMOSOS.slice(0, 40), FAMOSOS.slice(40)];
   }, [estudo]);
   return (

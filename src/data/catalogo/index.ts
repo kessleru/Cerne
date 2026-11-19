@@ -4,9 +4,10 @@
 // As trilhas do Estudar se montam sozinhas: uma por tema e uma por linguagem.
 // estudo.json é grande e cresce: vem num pedaço separado, só quando alguém precisa (useEstudo).
 import { useEffect, useState } from 'react';
+import { AREAS } from './areas';
 import { LINGUAGENS } from './linguagens';
 import { TEMAS } from './temas';
-import type { CategoriaFamoso, Entrada, Tema } from './tipos';
+import type { Area, AreaInfo, CategoriaFamoso, Entrada, Tema } from './tipos';
 
 const modulos = import.meta.glob<{ default: Entrada[] }>('./famosos/*.ts', { eager: true });
 export const FAMOSOS: Entrada[] = Object.keys(modulos)
@@ -16,12 +17,12 @@ export const FAMOSOS: Entrada[] = Object.keys(modulos)
 // famosos de saída; os de estudo entram quando estudo.json chega
 const POR_REPO = new Map<string, Entrada>(FAMOSOS.map((e) => [e.repo.toLowerCase(), e]));
 
-type Bruto = { repo: string; nota: string; lang: string; temas: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number };
+type Bruto = { repo: string; nota: string; lang: string; area?: Area; temas: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number };
 
 export type Trilha = {
   id: string;
   titulo: string;
-  grupo: 'Temas' | 'Linguagens';
+  grupo: 'Tudo' | 'Temas' | 'Linguagens';
   ext?: string;
   icone?: Tema['icone'];
   cor: string;
@@ -29,16 +30,27 @@ export type Trilha = {
   repos: Entrada[];
 };
 
-export type Estudo = { lista: Entrada[]; trilhas: Trilha[] };
+/** Uma área com os projetos dela e as trilhas (tudo, temas e linguagens com ao menos MINIMO projetos). */
+export type AreaEstudo = AreaInfo & { repos: Entrada[]; trilhas: Trilha[] };
+export type Estudo = { lista: Entrada[]; areas: AreaEstudo[] };
+
+const MINIMO = 5; // trilha com menos projetos fica escondida até crescer
 
 function montar(brutos: Bruto[]): Estudo {
-  const lista = brutos.map((e) => ({ ...e, tipo: 'projeto' as const }));
-  const trilhas: Trilha[] = [
-    ...TEMAS.map((t) => ({ id: t.id, titulo: t.titulo, grupo: 'Temas' as const, icone: t.icone, cor: t.cor, resumo: t.resumo, repos: lista.filter((e) => e.temas.includes(t.id)) })),
-    ...LINGUAGENS.map((l) => ({ id: `lang-${l.ext}`, titulo: l.nome, grupo: 'Linguagens' as const, ext: l.ext, cor: l.cor, repos: lista.filter((e) => e.lang === l.nome) })),
-  ].filter((t) => t.repos.length >= 5); // trilha com menos de 5 projetos fica de fora até crescer
+  const lista: Entrada[] = brutos.map((e) => ({ ...e, area: e.area ?? 'backend', tipo: 'projeto' as const }));
+  const areas: AreaEstudo[] = [];
+  for (const a of AREAS) {
+    const repos = lista.filter((e) => e.area === a.id);
+    if (repos.length < MINIMO) continue;
+    const trilhas: Trilha[] = [
+      { id: 'tudo', titulo: `Tudo em ${a.titulo}`, grupo: 'Tudo' as const, icone: a.icone, cor: a.cor, resumo: a.resumo, repos },
+      ...TEMAS.map((t) => ({ id: t.id, titulo: t.titulo, grupo: 'Temas' as const, icone: t.icone, cor: t.cor, resumo: t.resumo, repos: repos.filter((e) => e.temas.includes(t.id)) })),
+      ...LINGUAGENS.map((l) => ({ id: `lang-${l.ext}`, titulo: l.nome, grupo: 'Linguagens' as const, ext: l.ext, cor: l.cor, repos: repos.filter((e) => e.lang === l.nome) })),
+    ].filter((t) => t.repos.length >= MINIMO);
+    areas.push({ ...a, repos, trilhas });
+  }
   for (const e of lista) POR_REPO.set(e.repo.toLowerCase(), e);
-  return { lista, trilhas };
+  return { lista, areas };
 }
 
 let estudo: Estudo | null = null;
@@ -71,4 +83,5 @@ if (import.meta.env.DEV) {
   for (const e of FAMOSOS) if (!e.famoso) console.warn(`[catálogo] ${e.repo}: famoso sem categoria`);
 }
 
-export type { Entrada, Nivel } from './tipos';
+export type { Area, AreaInfo, Entrada, Nivel } from './tipos';
+export { AREAS } from './areas';

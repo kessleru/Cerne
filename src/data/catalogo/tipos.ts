@@ -7,6 +7,8 @@ export type Tipo = 'projeto' | 'tutorial' | 'exemplo' | 'biblioteca' | 'framewor
 
 export type Api = 'REST' | 'GraphQL' | 'gRPC' | 'WebSocket' | 'tRPC' | 'RPC';
 
+export type Area = 'backend' | 'frontend' | 'mobile' | 'dados' | 'devops' | 'jogos' | 'ferramentas' | 'sistemas';
+
 export type CategoriaFamoso = 'Aprender' | 'Back-end' | 'Front-end' | 'IA' | 'Dados' | 'Sistemas' | 'Linguagens' | 'Ferramentas';
 
 export type Entrada = {
@@ -18,6 +20,8 @@ export type Entrada = {
   lang: string;
   /** ids de temas.ts */
   temas: string[];
+  /** só no Estudar: a área (areas.ts) */
+  area?: Area;
   tipo: Tipo;
   /** peças do projeto, para comparar (ex.: Express, Prisma, PostgreSQL, JWT) */
   stack?: string[];
@@ -35,4 +39,5 @@ export type Entrada = {
 };
 
 export type Linguagem = { nome: string; ext: string; cor: string };
+export type AreaInfo = { id: Area; titulo: string; icone: import('../../components/Icon').IconName; cor: string; resumo: string };
 export type Tema = { id: string; titulo: string; icone: import('../../components/Icon').IconName; cor: string; resumo: string };
