@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { CATEGORIAS, FAMOSOS, extDaLinguagem, useEstudo, type Area, type Entrada, type Trilha } from '../data/catalogo';
+import { AREAS_ESTUDO, CATEGORIAS, FAMOSOS, extDaLinguagem, useArea, type Area, type Entrada, type Trilha } from '../data/catalogo';
 import { FileIcon } from '../icons/FileIcon';
 import type { RepoLink } from '../lib/route';
 import { lerAvatar } from '../data/github/conta';
@@ -198,8 +198,8 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const [semente, setSemente] = useState(novaSemente);
   const iconPack = usePrefs().icons;
   const feitosAgora = useFeitos();
-  const estudo = useEstudo();
-  const area = estudo?.areas.find((a) => a.id === areaId) ?? estudo?.areas[0];
+  const escolhida = AREAS_ESTUDO.find((a) => a.id === areaId) ?? AREAS_ESTUDO[0];
+  const area = useArea(escolhida?.id ?? null);
   const TRILHAS = area?.trilhas ?? [];
   const padrao = area?.id === 'backend' ? 'apis' : 'tudo';
   const t = TRILHAS.find((x) => x.id === (trilhaPor[area?.id ?? ''] ?? padrao)) ?? TRILHAS[0];
@@ -223,7 +223,7 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     setAreaId(a);
     gravar(AREA_KEY, a);
   };
-  // base: o que a busca, as estrelas e "esconder estudados" deixam; os filtros de faceta vêm por cima
+  // base: o que a busca e as estrelas deixam; os filtros de faceta vêm por cima
   const base = useMemo(() => {
     if (!t) return [];
     const termo = q.trim().toLowerCase();
@@ -235,8 +235,38 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   }, [t, q, minEstrelas]);
   const lista = useMemo(() => ordenar(base.filter((e) => casa(e, filtros)), ordem, semente), [base, filtros, ordem, semente]);
   const facetas = useMemo(() => (t ? facetasDe(base, t.grupo, filtros) : []), [t, base, filtros]);
-  if (!estudo) return <p className="ks-explore__vazio" aria-busy="true">Carregando a lista de estudo…</p>;
-  if (!area || !t) return <p className="ks-explore__vazio">A lista de estudo ainda está vazia. Rode node scripts/catalogo-estudo.mjs para montá-la.</p>;
+  if (!escolhida) return <p className="ks-explore__vazio">A lista de estudo ainda está vazia. Rode node scripts/catalogo-estudo.mjs para montá-la.</p>;
+  const barra = (
+    <div className="ks-areas" role="tablist" aria-label="Áreas">
+      {AREAS_ESTUDO.map((a) => (
+        <button
+          key={a.id}
+          type="button"
+          role="tab"
+          className="ks-areas__item"
+          aria-selected={a.id === escolhida.id}
+          onClick={() => pickArea(a.id)}
+          onKeyDown={(e) => {
+            const i = AREAS_ESTUDO.findIndex((x) => x.id === escolhida.id);
+            const n = AREAS_ESTUDO.length;
+            if (e.key === 'ArrowRight') pickArea(AREAS_ESTUDO[(i + 1) % n]!.id);
+            else if (e.key === 'ArrowLeft') pickArea(AREAS_ESTUDO[(i + n - 1) % n]!.id);
+          }}
+        >
+          <Selo t={a} size={28} />
+          <span className="ks-areas__name">{a.titulo}</span>
+          <span className="ks-areas__n">{a.total.toLocaleString('pt-BR')}</span>
+        </button>
+      ))}
+    </div>
+  );
+  if (!area || !t)
+    return (
+      <div className="ks-studywrap">
+        {barra}
+        <p className="ks-explore__vazio" aria-busy="true">Carregando {escolhida.titulo}…</p>
+      </div>
+    );
   const grupos = ['Temas', 'Linguagens'] as const;
   const tudo = TRILHAS.find((x) => x.grupo === 'Tudo');
   const alternar = (c: Campo, v: string) => {
@@ -258,28 +288,7 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const escolhidos = (Object.keys(filtros) as Campo[]).flatMap((c) => (filtros[c] ?? []).map((v) => [c, v] as const));
   return (
     <div className="ks-studywrap">
-      <div className="ks-areas" role="tablist" aria-label="Áreas">
-        {estudo.areas.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            role="tab"
-            className="ks-areas__item"
-            aria-selected={a.id === area.id}
-            onClick={() => pickArea(a.id)}
-            onKeyDown={(e) => {
-              const i = estudo.areas.findIndex((x) => x.id === area.id);
-              const n = estudo.areas.length;
-              if (e.key === 'ArrowRight') pickArea(estudo.areas[(i + 1) % n]!.id);
-              else if (e.key === 'ArrowLeft') pickArea(estudo.areas[(i + n - 1) % n]!.id);
-            }}
-          >
-            <Selo t={a} size={28} />
-            <span className="ks-areas__name">{a.titulo}</span>
-            <span className="ks-areas__n">{a.repos.length.toLocaleString('pt-BR')}</span>
-          </button>
-        ))}
-      </div>
+      {barra}
     <div className="ks-study">
       <nav className="ks-study__topics" aria-label={`Temas e linguagens de ${area.titulo}`}>
         {tudo && (

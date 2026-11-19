@@ -7,3 +7,6 @@ coverage
 
 # notas internas dos agentes (caminhos locais)
 docs/
+
+# formato antigo do Estudar (um arquivo só): o script lê uma vez, grava em estudo/ e apaga
+src/data/catalogo/estudo.json

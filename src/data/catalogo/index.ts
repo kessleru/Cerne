@@ -1,10 +1,11 @@
 // Índice do catálogo.
 // Famosos: projetos grandes e conhecidos, escritos à mão em famosos/*.ts.
-// Estudar: projetos de pessoas (estudantes e devs), gerados por scripts/catalogo-estudo.mjs em estudo.json.
-// As trilhas do Estudar se montam sozinhas: uma por tema e uma por linguagem.
-// estudo.json é grande e cresce: vem num pedaço separado, só quando alguém precisa (useEstudo).
+// Estudar: projetos de pessoas (estudantes e devs), gerados por scripts/catalogo-estudo.mjs em estudo/<área>.json.
+// Cada área vem num pedaço separado, só quando alguém a abre (useArea); estudo/indice.json, pequeno, traz as
+// contagens e a amostra do carrossel. As trilhas de cada área se montam sozinhas: tudo, uma por tema e uma por linguagem.
 import { useEffect, useState } from 'react';
 import { AREAS } from './areas';
+import INDICE from './estudo/indice.json';
 import { LINGUAGENS } from './linguagens';
 import { TEMAS } from './temas';
 import type { Area, AreaInfo, CategoriaFamoso, Entrada, Tema } from './tipos';
@@ -14,10 +15,11 @@ export const FAMOSOS: Entrada[] = Object.keys(modulos)
   .sort()
   .flatMap((k) => modulos[k]!.default);
 
-// famosos de saída; os de estudo entram quando estudo.json chega
+// famosos de saída; os de estudo entram quando a área deles chega
 const POR_REPO = new Map<string, Entrada>(FAMOSOS.map((e) => [e.repo.toLowerCase(), e]));
 
-type Bruto = { repo: string; nota: string; lang: string; area?: Area; temas: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number; readme?: number };
+type Bruto = { repo: string; nota: string; lang: string; area?: Area; temas?: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number; readme?: number };
+const projeto = (e: Bruto, area: Area): Entrada => ({ ...e, temas: e.temas ?? [], area, tipo: 'projeto' });
 
 export type Trilha = {
   id: string;
@@ -30,48 +32,61 @@ export type Trilha = {
   repos: Entrada[];
 };
 
+const MINIMO = 5; // área ou trilha com menos projetos fica escondida até crescer
+
+/** Áreas que aparecem no Estudar, com o total de projetos (sem baixar a lista). */
+export const AREAS_ESTUDO: (AreaInfo & { total: number })[] = AREAS.map((a) => ({ ...a, total: (INDICE.contagem as Partial<Record<Area, number>>)[a.id] ?? 0 })).filter((a) => a.total >= MINIMO);
+
+/** Amostra para o carrossel: os de README mais completo de cada área. */
+export const VITRINE: Entrada[] = (INDICE.vitrine as Bruto[]).map((e) => projeto(e, e.area ?? 'backend'));
+
 /** Uma área com os projetos dela e as trilhas (tudo, temas e linguagens com ao menos MINIMO projetos). */
 export type AreaEstudo = AreaInfo & { repos: Entrada[]; trilhas: Trilha[] };
-export type Estudo = { lista: Entrada[]; areas: AreaEstudo[] };
 
-const MINIMO = 5; // trilha com menos projetos fica escondida até crescer
+function montar(a: AreaInfo, brutos: Bruto[]): AreaEstudo {
+  const repos = brutos.map((e) => projeto(e, a.id));
+  const trilhas: Trilha[] = [
+    { id: 'tudo', titulo: `Tudo em ${a.titulo}`, grupo: 'Tudo' as const, icone: a.icone, cor: a.cor, resumo: a.resumo, repos },
+    ...TEMAS.map((t) => ({ id: t.id, titulo: t.titulo, grupo: 'Temas' as const, icone: t.icone, cor: t.cor, resumo: t.resumo, repos: repos.filter((e) => e.temas.includes(t.id)) })),
+    ...LINGUAGENS.map((l) => ({ id: `lang-${l.ext}`, titulo: l.nome, grupo: 'Linguagens' as const, ext: l.ext, cor: l.cor, repos: repos.filter((e) => e.lang === l.nome) })),
+  ].filter((t) => t.repos.length >= MINIMO);
+  for (const e of repos) POR_REPO.set(e.repo.toLowerCase(), e);
+  return { ...a, repos, trilhas };
+}
 
-function montar(brutos: Bruto[]): Estudo {
-  const lista: Entrada[] = brutos.map((e) => ({ ...e, area: e.area ?? 'backend', tipo: 'projeto' as const }));
-  const areas: AreaEstudo[] = [];
-  for (const a of AREAS) {
-    const repos = lista.filter((e) => e.area === a.id);
-    if (repos.length < MINIMO) continue;
-    const trilhas: Trilha[] = [
-      { id: 'tudo', titulo: `Tudo em ${a.titulo}`, grupo: 'Tudo' as const, icone: a.icone, cor: a.cor, resumo: a.resumo, repos },
-      ...TEMAS.map((t) => ({ id: t.id, titulo: t.titulo, grupo: 'Temas' as const, icone: t.icone, cor: t.cor, resumo: t.resumo, repos: repos.filter((e) => e.temas.includes(t.id)) })),
-      ...LINGUAGENS.map((l) => ({ id: `lang-${l.ext}`, titulo: l.nome, grupo: 'Linguagens' as const, ext: l.ext, cor: l.cor, repos: repos.filter((e) => e.lang === l.nome) })),
-    ].filter((t) => t.repos.length >= MINIMO);
-    areas.push({ ...a, repos, trilhas });
+const ARQUIVOS = import.meta.glob<{ default: Bruto[] }>(['./estudo/*.json', '!./estudo/indice.json']);
+const prontas = new Map<Area, AreaEstudo>();
+const pedidos = new Map<Area, Promise<AreaEstudo | null>>();
+
+export function carregarArea(id: Area): Promise<AreaEstudo | null> {
+  const info = AREAS.find((a) => a.id === id);
+  const arquivo = ARQUIVOS[`./estudo/${id}.json`];
+  if (!info || !arquivo) return Promise.resolve(null);
+  let p = pedidos.get(id);
+  if (!p) {
+    p = arquivo().then((m) => {
+      const pronta = montar(info, m.default);
+      prontas.set(id, pronta);
+      return pronta;
+    });
+    pedidos.set(id, p);
   }
-  for (const e of lista) POR_REPO.set(e.repo.toLowerCase(), e);
-  return { lista, areas };
+  return p;
 }
 
-let estudo: Estudo | null = null;
-let carregando: Promise<Estudo> | null = null;
-export function carregarEstudo(): Promise<Estudo> {
-  carregando ??= import('./estudo.json').then((m) => (estudo = montar(m.default as Bruto[])));
-  return carregando;
-}
-
-/** A lista de estudo; null enquanto o pedaço ainda chega. */
-export function useEstudo(): Estudo | null {
-  const [e, setE] = useState(estudo);
+/** Os projetos de uma área; null enquanto o pedaço ainda chega. */
+export function useArea(id: Area | null): AreaEstudo | null {
+  const [, redesenhar] = useState(0);
+  const pronta = id ? (prontas.get(id) ?? null) : null;
   useEffect(() => {
-    if (e) return;
+    if (!id || prontas.has(id)) return;
     let vivo = true;
-    carregarEstudo().then((x) => vivo && setE(x));
+    void carregarArea(id).then(() => vivo && redesenhar((n) => n + 1));
     return () => {
       vivo = false;
     };
-  }, [e]);
-  return e;
+  }, [id]);
+  return pronta;
 }
 
 export const CATEGORIAS: ('Todos' | CategoriaFamoso)[] = ['Todos', 'Aprender', 'Back-end', 'Front-end', 'IA', 'Dados', 'Sistemas', 'Linguagens', 'Ferramentas'];

@@ -26,8 +26,13 @@ function precacheSw(): Plugin {
       };
       percorrer(outDir);
       const conjunto = new Set(todos);
+      // as listas do Estudar (uma por área) são grandes: entram no cache quando a pessoa abre a área, não na instalação
+      const pastaEstudo = path.resolve(outDir, '..', 'src', 'data', 'catalogo', 'estudo');
+      const areas = fs.existsSync(pastaEstudo) ? fs.readdirSync(pastaEstudo).filter((f) => f.endsWith('.json') && f !== 'indice.json').map((f) => f.replace(/\.json$/, '')) : [];
+      const deArea = (f: string) => areas.some((a) => new RegExp(`^assets/${a}-[\\w-]+\\.js$`).test(f));
       const arquivos = todos
         .filter((f) => f !== 'sw.js' && f !== '404.html' && !f.endsWith('.map'))
+        .filter((f) => !deArea(f))
         // todo navegador que roda o app lê woff2; o woff é só reserva e dobraria o precache das fontes
         .filter((f) => !(f.endsWith('.woff') && conjunto.has(f.replace(/\.woff$/, '.woff2'))))
         .sort();

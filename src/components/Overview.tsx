@@ -2,7 +2,7 @@
 // Dados do repositório, o README renderizado (é ele que contextualiza o projeto) e a estrutura.
 import { useEffect, useMemo, useState } from 'react';
 import { arquivoDeEntrada } from '../lib/entrada';
-import { AREAS, entradaDe, extDaLinguagem, useEstudo, type Entrada } from '../data/catalogo';
+import { AREAS, entradaDe, extDaLinguagem, type Entrada } from '../data/catalogo';
 import type { RepoInfo, RepoSource, TreeEntry } from '../data/types';
 import { FileIcon } from '../icons/FileIcon';
 import { langOf } from '../lib/lang';
@@ -39,7 +39,6 @@ export function findReadme(paths: string[], dir: string): string | null {
 }
 
 export function Overview(p: Props) {
-  useEstudo(); // redesenha quando a lista de estudo chega (chips de assunto e marcação de estudado)
   const entrada = entradaDe(p.owner, p.repo);
   const readme = useMemo(() => (p.entries ? findReadme(p.entries.map((e) => e.path), '') : null), [p.entries]);
   const [texto, setTexto] = useState<{ path: string; text: string | null } | null>(null);

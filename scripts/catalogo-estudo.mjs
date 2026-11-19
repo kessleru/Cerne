@@ -1,6 +1,6 @@
 // Monta a lista do Estudar: repositórios de pessoas (não de organizações) para estudar, em várias áreas
 // (back-end, front-end, mobile, dados e IA, DevOps, jogos, ferramentas, sistemas), escolhidos pela
-// qualidade do README. Gera src/data/catalogo/estudo.json.
+// qualidade do README. Gera src/data/catalogo/estudo/ (um arquivo por área e indice.json).
 //
 // Uso: node scripts/catalogo-estudo.mjs              (busca e substitui a lista)
 //      node scripts/catalogo-estudo.mjs --somar      (busca e acrescenta ao que já existe)
@@ -8,7 +8,7 @@
 //      --area=jogos,mobile                           (só as buscas dessas áreas; combina com --somar)
 //
 // Busca pelo GitHub (gh api, já autenticado; ou fetch com GITHUB_TOKEN) e lê os READMEs pelo
-// raw.githubusercontent.com. A nota do README é uma heurística: tamanho, seções, como rodar,
+// raw.githubusercontent.com. Grava em src/data/catalogo/estudo/<área>.json. A nota do README é uma heurística: tamanho, seções, como rodar,
 // como funciona (rotas, telas, comandos, resultados), tecnologias, arquitetura, testes e imagens.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -17,7 +17,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SAIDA = process.env.CATALOGO_SAIDA ?? path.join(ROOT, 'src', 'data', 'catalogo', 'estudo.json'); // outra saída: para testar regras numa cópia
+// A lista fica em src/data/catalogo/estudo/<área>.json (o site baixa só a área aberta) mais indice.json
+// (contagens e a amostra do carrossel). CATALOGO_SAIDA troca a pasta, para testar regras numa cópia.
+const PASTA = process.env.CATALOGO_SAIDA ?? path.join(ROOT, 'src', 'data', 'catalogo', 'estudo');
+const ANTIGO = path.join(ROOT, 'src', 'data', 'catalogo', 'estudo.json'); // formato de antes, num arquivo só: lido uma vez e apagado
+const VITRINE_POR_AREA = 25;
 const SOMAR = process.argv.includes('--somar');
 const REAVALIAR = process.argv.includes('--reavaliar');
 const SO_AREAS = process.argv.find((a) => a.startsWith('--area='))?.slice(7).split(',');
@@ -423,7 +427,8 @@ function etiquetas(it, t, dica, man = null) {
 
 const entradaDe = (it, e, nota) => ({
   repo: it.full_name,
-  nota: semEmoji(it.description ?? '').slice(0, 110),
+  // corta por caractere (não por unidade UTF-16) e nunca deixa meio emoji: o leitor de JSON do build recusa
+  nota: [...semEmoji(it.description ?? '')].slice(0, 110).join('').toWellFormed(),
   lang: it.language,
   area: e.area,
   temas: e.temas,
@@ -435,7 +440,34 @@ const entradaDe = (it, e, nota) => ({
 });
 
 const ordenar = (lista) => lista.sort((a, b) => b.readme - a.readme || b.estrelas - a.estrelas);
-const gravar = (lista) => fs.writeFileSync(SAIDA, JSON.stringify(ordenar(lista)) + '\n');
+function lerLista() {
+  if (!process.env.CATALOGO_SAIDA && fs.existsSync(ANTIGO)) return JSON.parse(fs.readFileSync(ANTIGO, 'utf8'));
+  if (!fs.existsSync(PASTA)) return [];
+  return fs
+    .readdirSync(PASTA)
+    .filter((f) => f.endsWith('.json') && f !== 'indice.json')
+    .flatMap((f) => JSON.parse(fs.readFileSync(path.join(PASTA, f), 'utf8')).map((e) => ({ ...e, area: f.replace(/\.json$/, '') })));
+}
+function gravar(lista) {
+  fs.mkdirSync(PASTA, { recursive: true });
+  const porArea = Object.fromEntries(ORDEM_AREAS.map((a) => [a, []]));
+  for (const e of ordenar(lista)) (porArea[e.area] ??= []).push(e);
+  const contagem = {};
+  const vitrine = [];
+  for (const [a, l] of Object.entries(porArea)) {
+    const alvo = path.join(PASTA, `${a}.json`);
+    if (!l.length) {
+      if (fs.existsSync(alvo)) fs.rmSync(alvo);
+      continue;
+    }
+    // a área é o nome do arquivo: não se repete em cada entrada
+    fs.writeFileSync(alvo, JSON.stringify(l.map(({ area, ...resto }) => resto)) + '\n');
+    contagem[a] = l.length;
+    vitrine.push(...l.slice(0, VITRINE_POR_AREA).map((e) => ({ repo: e.repo, nota: e.nota, lang: e.lang, area: a })));
+  }
+  fs.writeFileSync(path.join(PASTA, 'indice.json'), JSON.stringify({ contagem, vitrine }) + '\n');
+  if (!process.env.CATALOGO_SAIDA && fs.existsSync(ANTIGO)) fs.rmSync(ANTIGO);
+}
 const contar = (lista, f) => {
   const m = new Map();
   for (const e of lista) for (const k of [].concat(f(e) ?? '(nenhum)')) m.set(k, (m.get(k) ?? 0) + 1);
@@ -465,7 +497,7 @@ async function emLotes(lista, lote, fazer, rotulo) {
 
 // ---------- reavaliar a lista atual (sem buscar de novo) ----------
 if (REAVALIAR) {
-  const atual = JSON.parse(fs.readFileSync(SAIDA, 'utf8'));
+  const atual = lerLista();
   const novos = [];
   const motivos = new Map();
   const conta = (m) => motivos.set(m, (motivos.get(m) ?? 0) + 1);
@@ -525,7 +557,7 @@ await Promise.all(
 );
 console.log();
 
-const antigos = SOMAR && fs.existsSync(SAIDA) ? JSON.parse(fs.readFileSync(SAIDA, 'utf8')) : [];
+const antigos = SOMAR ? lerLista() : [];
 const ja = new Set(antigos.map((x) => x.repo.toLowerCase()));
 
 // no máximo POR_PESSOA por pessoa: variedade de autores (contando os que já estão na lista)
