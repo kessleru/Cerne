@@ -207,8 +207,10 @@ function notaDoReadme(t) {
 
 // ---------- etiquetas ----------
 const tudo = (it, t) => `${it.full_name} ${it.description ?? ''} ${(it.topics ?? []).join(' ')} ${t ?? ''}`;
-const cabeca = (it, t) => `${it.full_name.replace(/[-_]/g, ' ')} ${it.description ?? ''} ${(it.topics ?? []).join(' ')} ${(t ?? '').slice(0, 1500)}`;
-const identidadeDe = (it) => `${it.full_name.replace(/[-_]/g, ' ')} ${it.description ?? ''} ${(it.topics ?? []).join(' ').replace(/-/g, ' ')}`;
+const cabeca = (it, t) => `${nomeDe(it)} ${it.description ?? ''} ${(it.topics ?? []).join(' ')} ${(t ?? '').slice(0, 1500)}`;
+// nome do repositório (sem o dono: "ethereumdegen" não faz de um editor de mapas um projeto de cripto), descrição e tópicos
+const nomeDe = (it) => it.full_name.split('/').pop().replace(/[-_.]/g, ' ');
+const identidadeDe = (it) => `${nomeDe(it)} ${it.description ?? ''} ${(it.topics ?? []).join(' ').replace(/-/g, ' ')}`;
 
 // Sinais de cada área (contados no nome, descrição e tópicos). Vence a área com mais sinais;
 // a área da busca que achou o repositório ganha um empurrão e desempata.
@@ -287,9 +289,10 @@ const TEMAS = [
 // Assunto do projeto, pelo nome, descrição e tópicos. A primeira regra que casar vale (as mais específicas primeiro).
 const DOMINIOS = [
   ['Livraria', /(book ?store|bookshop|livraria|\bbooks?\b|livros?|ebooks?)/i],
-  ['Biblioteca', /(library management|biblioteca|lending|empr[ée]stimo)/i],
+  ['Biblioteca', /(library (management|system|app)|sistema de biblioteca|gerenciamento de biblioteca|gest[ãa]o de biblioteca|biblioteca (digital|virtual|escolar|municipal|online)|book lending|empr[ée]stimos? de livros|acervo)/i],
   ['Criptomoedas', /(crypto|bitcoin|blockchain|ethereum|web3|cripto)/i],
   ['Bancos e pagamentos', /(\bbank(ing)?\b|\bbanco\b|wallet|carteira|payments?|pagamentos?|picpay|\bpix\b|transfer[êe]ncias?)/i],
+  ['Imóveis', /(real estate|im[óo]veis|\bpropert(y|ies)\b|\bhouses?\b (price|rent|sale|listing)|house hunting|aluguel de (casas|apartamentos))/i],
   ['Finanças pessoais', /(expenses?|despesas?|gastos|finan(ce|ças)|budget|or[çc]amento|stock price|investiment)/i],
   ['E-commerce', /(e-?commerce|shopping|\bcart\b|carrinho|\bloja\b|online store|web store|marketplace|\bproducts?\b|produtos|amazon clone)/i],
   ['Leilão', /(auction|leil[ãa]o)/i],
@@ -316,7 +319,6 @@ const DOMINIOS = [
   ['Aluguel de carros', /(car rental|aluguel de (carros|ve[íi]culos)|rent a car)/i],
   ['Transporte', /(ride[- ]?sharing|uber clone|\btaxi\b|transporte|\btransport\b|logistic|log[íi]stica|entregas|delivery tracking)/i],
   ['Viagens', /(\btravel|viage(m|ns)|trip planner|turismo|tourism|\bflights?\b|\bvoos?\b)/i],
-  ['Imóveis', /(real estate|im[óo]veis|\bpropert(y|ies)\b)/i],
   ['Clima', /(weather|\bclima\b|previs[ãa]o do tempo)/i],
   ['Estoque', /(inventory|estoque|warehouse|almoxarifado)/i],
   ['Vagas e RH', /(job board|\bjobs? (portal|finder|search)|vagas de emprego|\bvagas\b|recruit|human resources|recursos humanos|\bemployees?\b|funcion[áa]rios|payroll)/i],
@@ -331,6 +333,9 @@ const DOMINIOS = [
   ['Casa e IoT', /\b(iot|smart home|casa inteligente|home automation|arduino|esp32|raspberry)\b/i],
   ['Jogos clássicos', /\b(tetris|snake|pong|chess|xadrez|sudoku|minesweeper|campo minado|tic[- ]tac[- ]toe|jogo da velha|breakout|flappy|space invaders|2048|wordle)\b/i],
 ];
+
+// regras de antes (mais largas): o que casava com elas veio do nome ou da descrição, não dos tópicos
+const DOMINIO_ANTES = { Biblioteca: /(library management|biblioteca|lending|empr[ée]stimo)/i, Imóveis: /(real estate|im[óo]veis|\bpropert(y|ies)\b)/i };
 
 // [nome, regex, linguagens] — frameworks só contam na linguagem deles (gin em Python é palavra comum)
 const JS = ['JavaScript', 'TypeScript', 'Vue', 'Svelte', 'HTML'];
@@ -398,6 +403,14 @@ const NO_MANIFESTO = {
   Laravel: /laravel\/framework/, Rails: /gem ['"]rails['"]/, Phoenix: /:phoenix\b/, Flutter: /sdk: flutter/, Bloc: /\bbloc:|flutter_bloc/, Riverpod: /riverpod/,
 };
 
+// Pacotes que não dependem da linguagem, mas são dependências: com arquivo de dependências, precisam estar nele.
+const DEPENDENCIA = new Set(['LangChain', 'OpenAI', 'Ollama', 'OpenCV', 'Selenium', 'Playwright', 'Tailwind', 'Firebase', 'Supabase', 'Socket.IO', 'Prisma', 'GraphQL']);
+NO_MANIFESTO['Socket.IO'] = /socket\.io|socketio/i;
+NO_MANIFESTO.OpenCV = /opencv/i;
+// nos arquivos de dependências os nomes vêm colados (firebase_core, @supabase/supabase-js, tailwindcss)
+for (const n of ['Firebase', 'Supabase', 'Tailwind', 'Playwright', 'Selenium', 'LangChain', 'OpenAI', 'Ollama', 'Prisma']) NO_MANIFESTO[n] = new RegExp(n.toLowerCase(), 'i');
+NO_MANIFESTO.GraphQL = /graphql|graphene|strawberry|ariadne|gqlgen|juniper|hotchocolate/i;
+
 function etiquetas(it, t, dica, man = null) {
   const amplo = tudo(it, t);
   const curto = cabeca(it, t);
@@ -405,7 +418,7 @@ function etiquetas(it, t, dica, man = null) {
   // frameworks e bibliotecas: com arquivo de dependências, só o que está nele; sem, o que o README cita
   const stack = STACK.filter(([nome, re, langs]) => {
     if (langs && !langs.includes(it.language)) return false;
-    if (langs && man) return (NO_MANIFESTO[nome] ?? re).test(man);
+    if ((langs || DEPENDENCIA.has(nome)) && man) return (NO_MANIFESTO[nome] ?? re).test(man);
     return re.test(amplo);
   }).map(([nome]) => nome).slice(0, 8);
   const { area, sinais } = areaDe(it, dica, man ? stack : []);
@@ -509,7 +522,14 @@ if (REAVALIAR) {
     const fora = foraDoEscopo(it);
     if (fora) return conta(fora);
     const man = await manifesto(x.repo, x.lang);
-    novos.push(entradaDe(it, etiquetas(it, t, x.area ?? 'backend', man), nota));
+    const e = etiquetas(it, t, x.area ?? 'backend', man);
+    // sem os tópicos do GitHub (não ficam guardados), o assunto pode sumir. Mantém o anterior só se ele veio
+    // dos tópicos: se não está no nome nem na descrição, e não vem do nome do dono
+    const regras = [DOMINIOS.find(([n]) => n === x.dominio)?.[1], DOMINIO_ANTES[x.dominio]].filter(Boolean);
+    const doTexto = regras.some((re) => re.test(identidadeDe(it)) || re.test(`${x.repo.split('/')[0]} ${x.nota}`));
+    if (!e.dominio && x.dominio && regras.length && !doTexto) e.dominio = x.dominio;
+    if (!e.temas.includes('desafios') && x.temas?.includes('desafios')) e.temas.push('desafios');
+    novos.push(entradaDe(it, e, nota));
   }, 'READMEs');
   gravar(novos);
   console.log(`Resumo: antes=${atual.length} depois=${novos.length}`);
