@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { withThemeTransition } from '../anim/motion';
 import { PACK_LABELS } from '../icons/packs';
 import {
   ACCENTS, DEFAULT_PREFS, FONT_LABELS, SCOPE_LABELS, THEMES, prefsStore, usePrefs,
-  type AccentId, type Density, type EditorScope, type FontId, type IconPack, type Prefs, type ThemeId,
+  type AccentId, type Density, type EditorScope, type Guides, type FontId, type IconPack, type Prefs, type ThemeId,
 } from '../state/prefs';
-import { clearToken, getToken, saveToken, subscribeToken } from '../state/token';
+import { clearToken } from '../state/token';
+import { sair, useConta } from '../state/account';
+import { Avatar } from './Avatar';
 import { importThemeJson, importedStore, removeImportedTheme, useEditorThemes } from '../state/themes';
 import { source } from '../data/source';
 import { Icon } from './Icon';
@@ -67,24 +69,18 @@ function download(name: string, text: string, type = 'application/json') {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-const tokenSnapshot = () => {
-  const t = getToken();
-  return t.value ? (t.remembered ? 'lembrado' : 'sessao') : 'nenhum';
-};
-
-export function Preferences({ onClose, origin, section }: { onClose: () => void; origin?: { x: number; y: number } | null; section?: string }) {
+export function Preferences({ onClose, origin, section, onAccount }: { onClose: () => void; origin?: { x: number; y: number } | null; section?: string; onAccount?: () => void }) {
   const p = usePrefs();
   const themes = useEditorThemes();
   const set = (patch: Partial<Prefs>) => prefsStore.set(patch);
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [tokenText, setTokenText] = useState('');
-  const [remember, setRemember] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   useOrigin(panel, origin);
 
-  const tokenState = useSyncExternalStore(subscribeToken, tokenSnapshot);
+  const conta = useConta();
+  const perfil = conta.status === 'anonimo' ? null : conta.conta;
 
   useEffect(() => {
     if (section) panel.current?.querySelector(`#pf-${section}`)?.scrollIntoView({ block: 'start' });
@@ -236,6 +232,9 @@ export function Preferences({ onClose, origin, section }: { onClose: () => void;
             <Setting label="Densidade" hint="Altura das linhas da árvore e do código.">
               <Segmented<Density> label="Densidade" value={p.density} onChange={(v) => set({ density: v })} options={[{ id: 'compact', label: 'Compacta' }, { id: 'normal', label: 'Normal' }, { id: 'comfortable', label: 'Confortável' }]} />
             </Setting>
+            <Setting label="Linhas de indentação" hint="Uma linha vertical por nível; a da pasta do arquivo aberto fica mais forte.">
+              <Segmented<Guides> label="Linhas de indentação" value={p.guides} onChange={(v) => set({ guides: v })} options={[{ id: 'always', label: 'Sempre' }, { id: 'hover', label: 'Ao passar o mouse' }, { id: 'none', label: 'Nunca' }]} />
+            </Setting>
           </Section>
 
           <Section id="acessibilidade" title="Acessibilidade">
@@ -247,16 +246,14 @@ export function Preferences({ onClose, origin, section }: { onClose: () => void;
             </Setting>
           </Section>
 
-          <Section id="token" title="Token">
-            <Setting label="Token do GitHub" hint={tokenState === 'nenhum' ? 'Sem token são 60 chamadas por hora. Com um token, 5 000.' : tokenState === 'lembrado' ? 'Token guardado neste navegador.' : 'Token guardado só nesta sessão.'} stacked>
-              <div className="ks-token">
-                <input className="ks-input" type="password" autoComplete="off" spellCheck={false} placeholder="Cole o token aqui" aria-label="Token do GitHub" value={tokenText} onChange={(e) => setTokenText(e.target.value)} />
-                <button type="button" className="key key--accent" disabled={!tokenText.trim()} onClick={() => { saveToken(tokenText.trim(), remember); setTokenText(''); toast(remember ? 'Token guardado neste navegador.' : 'Token guardado nesta sessão.'); }}>Salvar</button>
-                {tokenState !== 'nenhum' && <button type="button" className="key" onClick={() => { clearToken(); toast('Token removido.'); }}>Remover</button>}
-              </div>
-            </Setting>
-            <Setting label="Lembrar neste navegador" hint="Sem marcar, o token some ao fechar a aba.">
-              <Switch checked={remember} onChange={setRemember} label="Lembrar neste navegador" />
+          <Section id="token" title="Conta do GitHub">
+            <Setting
+              label={perfil ? (perfil.nome ?? perfil.login) : 'Sem conta'}
+              hint={conta.status === 'anonimo' ? 'Sem token são 60 chamadas por hora e só repositórios públicos. Com um token, 5 000 e os privados que você liberar.' : conta.status === 'invalido' ? 'O token guardado parou de funcionar. Troque por um novo.' : `@${perfil?.login ?? ''} · token ${conta.status === 'ok' && conta.lembrado ? 'guardado neste navegador' : 'guardado nesta sessão'}.`}
+            >
+              <Avatar conta={perfil} size={32} />
+              <button type="button" className={`key${conta.status === 'anonimo' ? ' key--accent' : ''}`} onClick={onAccount}>{conta.status === 'anonimo' ? 'Entrar' : 'Gerenciar conta'}</button>
+              {conta.status !== 'anonimo' && <button type="button" className="key" onClick={() => { sair(); toast('Você saiu. O token foi apagado deste navegador.'); }}>Sair</button>}
             </Setting>
           </Section>
 

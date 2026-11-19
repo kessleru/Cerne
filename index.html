@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- CSP restrita: a rede só vai ao GitHub (API e raw). 'wasm-unsafe-eval' não é necessário (Shiki usa o motor JS). -->
+    <!-- CSP restrita: a rede só vai ao GitHub (API e raw; fotos de perfil só como imagem, sem token). 'wasm-unsafe-eval' não é necessário (Shiki usa o motor JS). -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://raw.githubusercontent.com https://avatars.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'"
     />
     <title>Cerne</title>
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%icone-192.svg" />

@@ -18,6 +18,8 @@ import { saveRecent } from './Entry';
 import { FilePane, codeStyle } from './FilePane';
 import { Icon } from './Icon';
 import { Preferences } from './Preferences';
+import { Account } from './Account';
+import { AccountButton } from './Avatar';
 import { Kbd, Meter, PaneState, Presence, Splitter, ToastHost, toast, useLoadingGate } from './parts';
 import { SnippetDialog } from './SnippetDialog';
 import { Select } from './Select';
@@ -88,6 +90,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
 
   const [palette, setPalette] = useState<PaletteOpen | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState<{ x: number; y: number } | null | false>(false);
   const [refOpen, setRefOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [find, setFind] = useState<{ matches: FindMatch[]; current: number } | null>(null);
@@ -312,6 +315,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
     const c: Command[] = [];
     const add = (id: string, group: string, label: string, run: () => void, keys?: string[]) => c.push({ id, group, label, run, keys });
     add('prefs', 'Aplicativo', 'Abrir preferências', () => setPrefsOpen(true), ['Ctrl', ',']);
+    add('conta', 'Aplicativo', 'Conta do GitHub: entrar com token ou ver perfil', () => setAccountOpen(null));
     add('side', 'Aplicativo', 'Mostrar ou esconder a árvore', () => (narrow ? setDrawer((d) => !d) : setSideOpen((s) => !s)), ['Ctrl', 'B']);
     add('split', 'Aplicativo', 'Abrir em duas colunas', () => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active)), ['Ctrl', '\\']);
     add('find', 'Arquivo', 'Buscar no arquivo', () => lines && setFindOpen(true), ['Ctrl', 'F']);
@@ -418,7 +422,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
         title="Cota da API esgotada (demonstração)"
         actions={
           <>
-            <button type="button" className="key key--accent" onClick={() => toast('Demonstração: o token entra na v1.')}>Usar um token</button>
+            <button type="button" className="key key--accent" onClick={() => setAccountOpen(null)}>Entrar com um token</button>
             <button type="button" className="key" onClick={clearDemo}>Voltar</button>
           </>
         }
@@ -570,6 +574,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
           <button type="button" className="ks-icon-btn" aria-label="Imagem do trecho" data-tip="Imagem do trecho" data-tip-key="Alt+I" onClick={(e) => { setSnipOrigin(centerOf(e)); openSnippet(); }}><Icon name="image" /></button>
           {!narrow && <button type="button" className="ks-icon-btn" aria-label="Duas colunas" aria-pressed={!!split} data-tip="Duas colunas" data-tip-key="Ctrl+\\" onClick={() => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active))}><Icon name="columns" /></button>}
           <button type="button" className="ks-icon-btn" aria-label="Preferências" data-tip="Preferências" data-tip-key="Ctrl+," onClick={(e) => { setPrefsOrigin(centerOf(e)); setPrefsOpen(true); }}><Icon name="settings" /></button>
+          <AccountButton compact onClick={(e) => setAccountOpen(e.detail === 0 ? null : centerOf(e))} />
         </div>
       </header>
 
@@ -643,7 +648,8 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
           />
         )}
       </Presence>
-      <Presence open={prefsOpen}>{prefsOpen && <Preferences origin={prefsOrigin} onClose={() => setPrefsOpen(false)} />}</Presence>
+      <Presence open={prefsOpen}>{prefsOpen && <Preferences origin={prefsOrigin} onClose={() => setPrefsOpen(false)} onAccount={() => { setPrefsOpen(false); setAccountOpen(null); }} />}</Presence>
+      <Presence open={accountOpen !== false}>{accountOpen !== false && <Account origin={accountOpen} onClose={() => setAccountOpen(false)} />}</Presence>
       <Presence open={snippet}>
         {snippet && active && lines && selection && <SnippetDialog path={active} lines={lines} range={selection} origin={snipOrigin} onClose={() => setSnippet(false)} />}
       </Presence>

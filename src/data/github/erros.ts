@@ -42,7 +42,7 @@ export function erroDaResposta(res: Response, corpo: string, ctx: Contexto): Git
   const msg = corpo.toLowerCase();
 
   if (status === 401) {
-    return new GitHubError('token-invalido', 'O GitHub não aceitou o token: ele é inválido ou expirou. Troque ou remova o token nas preferências.', { status });
+    return new GitHubError('token-invalido', 'O GitHub não aceitou o token: ele é inválido ou expirou. Troque o token no botão da sua conta, no canto de cima.', { status });
   }
   if (status === 403 || status === 429) {
     if (msg.includes('secondary rate limit') || msg.includes('abuse') || (Number.isFinite(retry) && retry > 0)) {
@@ -70,7 +70,7 @@ export function erroDaResposta(res: Response, corpo: string, ctx: Contexto): Git
     }
     const dica = ctx.temToken
       ? ' Se ele for privado, confira se o token tem acesso a ele.'
-      : ' Se ele for privado, adicione um token com acesso nas preferências.';
+      : ' Se ele for privado, entre com um token que tenha acesso a ele (botão Entrar, no canto de cima).';
     return new GitHubError('nao-encontrado', `Repositório não encontrado.${dica}`, { status });
   }
   if (status === 409) {

@@ -192,17 +192,24 @@ export function Tree({
         onPointerDown={() => (input.current = 'mouse')}
       >
         {rows.length === 0 && <p className="ks-tree__none">Nenhum arquivo combina.</p>}
-        {renderRows(rows, { expanded, keep, active, tabbable, pack, toggle, onOpen, setFocus })}
+        {renderRows(rows, { expanded, keep, active, tabbable, scope: parentOf(tabbable ?? active), pack, toggle, onOpen, setFocus })}
       </div>
     </>
   );
 }
+
+const parentOf = (p: string | null | undefined) => (p && p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : null);
+
+/** Caminho do ancestral no nível `k` (0 = pasta da raiz). */
+const ancestor = (path: string, k: number) => path.split('/').slice(0, k + 1).join('/');
 
 type Ctx = {
   expanded: ReadonlySet<string>;
   keep: ReadonlySet<string> | null;
   active: string | null;
   tabbable: string | undefined;
+  /** pasta cuja linha de indentação fica acesa: a do item em foco ou do arquivo aberto */
+  scope: string | null;
   pack: IconPack;
   toggle: (p: string) => void;
   onOpen: (p: string, m: 'preview' | 'pin') => void;
@@ -248,7 +255,7 @@ function Row({ node, depth, open, selected, tabbable, c }: { node: Node; depth: 
       onDoubleClick={() => !node.dir && c.onOpen(node.path, 'pin')}
     >
       {Array.from({ length: depth }, (_, k) => (
-        <span key={k} className="ks-tree__indent" />
+        <span key={k} className={`ks-tree__indent${c.scope && ancestor(node.path, k) === c.scope ? ' is-scope' : ''}`} />
       ))}
       {node.dir ? <Icon name="chevronRight" className="ks-tree__chev" /> : <span className="ks-tree__spacer" />}
       <FileIcon pack={c.pack} path={node.path} dir={node.dir} open={node.dir && open} className="ks-tree__icon" />

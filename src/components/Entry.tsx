@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { markScreenReady } from '../anim/motion';
 import { formatLineHash } from '../lib/hash';
 import { parseRepoLink, type RepoLink } from '../lib/route';
 import { source } from '../data/source';
-import { getToken, subscribeToken } from '../state/token';
+import { Account } from './Account';
+import { AccountButton } from './Avatar';
 import { Icon, type IconName } from './Icon';
 import { Preferences } from './Preferences';
 import { Kbd, Meter, Presence, Rings, ToastHost } from './parts';
 import { Tooltip } from './Tooltip';
 import type { Quota } from '../data/types';
+import { useConta } from '../state/account';
 
 const RECENT_KEY = 'cerne:recentes';
 
@@ -55,21 +57,17 @@ function reading(l: RepoLink): { k: string; v: string }[] {
   return out;
 }
 
-const tokenLabel = () => {
-  const t = getToken();
-  return t.value ? (t.remembered ? 'Token lembrado' : 'Token na sessão') : 'Sem token';
-};
-
 export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const [value, setValue] = useState('');
   const [touched, setTouched] = useState(false);
   const [intro] = useState(() => !introPlayed());
   const [skipped, setSkipped] = useState(false);
   const [prefs, setPrefs] = useState<{ section?: string } | null>(null);
+  const [account, setAccount] = useState<{ x: number; y: number } | null | false>(false);
   const [quota, setQuota] = useState<Quota>(source.quota());
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const token = useSyncExternalStore(subscribeToken, tokenLabel);
+  const conta = useConta();
 
   const recents = useMemo(() => loadRecents(), []);
   const items: Item[] = useMemo(
@@ -162,6 +160,10 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   return (
     <main className={`ks-entry${intro && !skipped ? ' is-intro' : ''}`}>
       <Rings className="ks-entry__bg" />
+      <div className="ks-entry__top">
+        <button type="button" className="ks-icon-btn" aria-label="Preferências" data-tip="Preferências" onClick={() => setPrefs({})}><Icon name="settings" /></button>
+        <AccountButton onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAccount(e.detail === 0 ? null : { x: r.left + r.width / 2, y: r.bottom }); }} />
+      </div>
       <div className="ks-entry__col">
         <div className="ks-entry__brand">
           <Rings className="ks-entry__logo" />
@@ -230,8 +232,15 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
       <footer className="ks-entry__footer">
         <div>
           <Meter quota={quota} />
-          <button type="button" className="ks-entry__link" onClick={() => setPrefs({ section: 'token' })}>{token}</button>
-          <button type="button" className="ks-entry__link" onClick={() => setPrefs({})}>Preferências</button>
+          {conta.status === 'anonimo' ? (
+            <button type="button" className="ks-entry__tokenhint" onClick={() => setAccount(null)}>
+              {quota.limit} chamadas por hora sem token. <b>Entrar para ter 5 000</b>
+            </button>
+          ) : conta.status === 'invalido' ? (
+            <button type="button" className="ks-entry__tokenhint" onClick={() => setAccount(null)}>
+              <Icon name="alert" size={14} /> O token parou de funcionar. <b>Trocar</b>
+            </button>
+          ) : null}
         </div>
         <div className="ks-entry__keys">
           <span><Kbd>Ctrl</Kbd><Kbd>K</Kbd> campo</span>
@@ -239,7 +248,8 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
         </div>
       </footer>
 
-      <Presence open={!!prefs}>{prefs && <Preferences section={prefs.section} onClose={() => setPrefs(null)} />}</Presence>
+      <Presence open={!!prefs}>{prefs && <Preferences section={prefs.section} onClose={() => setPrefs(null)} onAccount={() => { setPrefs(null); setAccount(null); }} />}</Presence>
+      <Presence open={account !== false}>{account !== false && <Account origin={account} onClose={() => setAccount(false)} />}</Presence>
       <ToastHost />
       <Tooltip />
     </main>

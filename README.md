@@ -28,6 +28,14 @@ node scripts/medir-codeview.mjs
 - `src/anim/`: View Transitions e coreografias em GSAP, carregado depois da primeira tela.
 - `docs/tarefa-prototipo.md`: a especificação do protótipo.
 
+## Conta do GitHub
+
+Sem token, o GitHub libera 60 chamadas por hora e só repositórios públicos. O botão **Entrar** (canto de cima, na tela inicial e na barra do app) abre a janela da conta:
+
+- cole um token pessoal; o Cerne confere com o GitHub (`GET /user`) antes de guardar e mostra sua foto e seu @login;
+- um guia ilustrado, passo a passo, mostra como criar o token (fine-grained, recomendado, ou clássico), com um atalho que abre o formulário do GitHub já preenchido (nome, 90 dias, Contents só leitura);
+- o token fica só neste navegador (ou só na aba, se "Lembrar" estiver desligado) e só vai no cabeçalho `Authorization`.
+
 ## Atalhos
 
 `Ctrl K` paleta · `Ctrl G` ir à linha · `Ctrl F` buscar no arquivo · `Ctrl B` árvore · `Ctrl \` duas colunas · `Ctrl ,` preferências · `Alt L` copiar link das linhas · `Alt I` imagem do trecho · `Alt H` histórico · `Alt D` mudanças · `Alt Z` quebra de linha.

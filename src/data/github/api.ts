@@ -49,7 +49,7 @@ export async function chamarRaw(url: string, caminho: string): Promise<ArrayBuff
   }
   if (res.ok) return res.arrayBuffer();
   if (res.status === 404) {
-    throw new GitHubError('arquivo-nao-encontrado', `Arquivo não encontrado: ${caminho}. Se o repositório for privado, adicione um token nas preferências.`, { status: 404 });
+    throw new GitHubError('arquivo-nao-encontrado', `Arquivo não encontrado: ${caminho}. Se o repositório for privado, entre com um token (botão Entrar, no canto de cima).`, { status: 404 });
   }
   if (res.status === 429) {
     throw new GitHubError('limite-secundario', 'O GitHub limitou temporariamente a leitura de arquivos. Tente de novo em instantes.', { status: 429 });

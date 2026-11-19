@@ -43,6 +43,8 @@ export type EditorScope = 'code' | 'workspace' | 'all';
 export type IconPack = 'material' | 'catppuccin' | 'vscode';
 export type FontId = 'jetbrains' | 'sistema' | 'roboto';
 export type Density = 'compact' | 'normal' | 'comfortable';
+/** linhas de indentação da árvore: sempre, só com o ponteiro sobre ela, ou nunca */
+export type Guides = 'always' | 'hover' | 'none';
 
 export type Prefs = {
   theme: ThemeId;
@@ -59,6 +61,7 @@ export type Prefs = {
   ligatures: boolean;
   tab: number;
   density: Density;
+  guides: Guides;
   contrast: boolean;
   motion: 'auto' | 'reduced' | 'full';
   wrap: boolean;
@@ -76,6 +79,7 @@ export const DEFAULT_PREFS: Prefs = {
   ligatures: true,
   tab: 2,
   density: 'normal',
+  guides: 'always',
   contrast: false,
   motion: 'auto',
   wrap: false,

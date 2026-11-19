@@ -1,4 +1,4 @@
-// Aplica as preferências ao documento: tema da página, acento, alto contraste e movimento.
+// Aplica as preferências ao documento: tema da página, acento, alto contraste, movimento e guias da árvore.
 // Chamado de forma síncrona a cada mudança (a troca de tema por View Transition precisa do DOM já atualizado).
 import { prefsStore, reducedMotion, type Prefs } from './prefs';
 
@@ -9,6 +9,7 @@ export function applyToDocument(p: Prefs) {
   if (p.contrast) root.dataset.contrast = 'high';
   else delete root.dataset.contrast;
   root.dataset.motion = reducedMotion(p) ? 'reduce' : 'full';
+  root.dataset.guides = p.guides;
 }
 
 export function startPrefsSync() {

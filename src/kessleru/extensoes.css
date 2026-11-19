@@ -591,3 +591,24 @@ button.ks-appbar__ref { display: inline-flex; align-items: center; gap: var(--sp
   font: 500 13px/20px var(--font-mono);
   white-space: nowrap;
 }
+
+/* ---------- Árvore: linhas de indentação ----------
+   Uma linha por nível, no centro do recuo (alinhada à seta da pasta mãe). A da pasta do item em foco
+   (ou do arquivo aberto) fica mais forte, como no VS Code. Preferência: sempre, ao passar o mouse, nunca. */
+.ks-tree__indent { position: relative; background: none; }
+.ks-tree__indent::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 7px;
+  width: 1px;
+  background: var(--ctp-surface-2);
+  transition: background-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+.ks-tree__indent.is-scope::before { background: var(--ctp-overlay-1); }
+:root[data-guides='hover'] .ks-tree__indent::before { opacity: 0; }
+:root[data-guides='hover'] .ks-tree:is(:hover, :focus-within) .ks-tree__indent::before { opacity: 1; }
+:root[data-guides='none'] .ks-tree__indent::before { display: none; }
+:root[data-contrast='high'] .ks-tree__indent::before { background: var(--ctp-overlay-0); }
+:root[data-contrast='high'] .ks-tree__indent.is-scope::before { background: var(--ctp-text); }
+@media (forced-colors: active) { .ks-tree__indent::before { background: GrayText; } .ks-tree__indent.is-scope::before { background: CanvasText; } }
