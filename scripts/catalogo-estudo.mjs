@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SAIDA = path.join(ROOT, 'src', 'data', 'catalogo', 'estudo.json');
+const SAIDA = process.env.CATALOGO_SAIDA ?? path.join(ROOT, 'src', 'data', 'catalogo', 'estudo.json'); // outra saída: para testar regras numa cópia
 const SOMAR = process.argv.includes('--somar');
 const REAVALIAR = process.argv.includes('--reavaliar');
 const SO_AREAS = process.argv.find((a) => a.startsWith('--area='))?.slice(7).split(',');
@@ -142,6 +142,25 @@ async function readme(repo, ramo) {
   return null;
 }
 
+// Arquivo de dependências na raiz: diz o que o projeto usa de verdade (o README às vezes só cita).
+const MANIFESTOS = {
+  JavaScript: ['package.json'], TypeScript: ['package.json'], Vue: ['package.json'], Svelte: ['package.json'], HTML: ['package.json'],
+  Python: ['requirements.txt', 'pyproject.toml', 'Pipfile'], 'Jupyter Notebook': ['requirements.txt'],
+  Java: ['pom.xml', 'build.gradle', 'build.gradle.kts'], Kotlin: ['build.gradle.kts', 'build.gradle', 'pom.xml', 'app/build.gradle.kts', 'app/build.gradle'], Scala: ['build.sbt'],
+  Go: ['go.mod'], Rust: ['Cargo.toml'], PHP: ['composer.json'], Ruby: ['Gemfile'], Dart: ['pubspec.yaml'], Elixir: ['mix.exs'],
+};
+async function manifesto(repo, lang) {
+  for (const nome of MANIFESTOS[lang] ?? []) {
+    try {
+      const r = await fetch(`https://raw.githubusercontent.com/${repo}/HEAD/${nome}`);
+      if (r.ok) return await r.text();
+    } catch {
+      /* tenta o próximo */
+    }
+  }
+  return null;
+}
+
 // ---------- nota do README ----------
 const semCodigo = (t) => t.replace(/```[\s\S]*?```/g, ' ');
 const MODELO_PRONTO = /bootstrapped with \[?Create React App|This template provides a minimal setup|Welcome to your new TanStack|This is a \[Next\.js\]\(https:\/\/nextjs\.org\) project bootstrapped|This project was generated with \[Angular CLI\]|# Getting Started with Create React App|A new Flutter project\.\s*## Getting Started/i;
@@ -187,10 +206,21 @@ const AREAS = {
 };
 const ORDEM_AREAS = Object.keys(AREAS);
 
-function areaDe(it, dica) {
+const DE_SERVIDOR = ['Express', 'NestJS', 'Fastify', 'Hono', 'AdonisJS', 'Spring Boot', 'Quarkus', 'Django', 'DRF', 'FastAPI', 'Flask', 'Laravel', 'Gin', 'Echo', 'Fiber', 'Axum', 'Actix', 'Rocket', 'ASP.NET Core', 'Rails', 'Phoenix', 'Ktor'];
+const DE_TELA = ['React', 'Next.js', 'Vue', 'Nuxt', 'Angular', 'Svelte', 'Astro'];
+const DE_CELULAR = ['React Native', 'Expo', 'Flutter', 'Jetpack Compose', 'SwiftUI'];
+const DE_JOGO = ['Unity', 'Godot', 'Pygame', 'Phaser', 'Raylib', 'Bevy', 'LibGDX', 'MonoGame', 'LÖVE'];
+
+function areaDe(it, dica, confirmada = []) {
   const id = identidadeDe(it);
   const pontos = Object.fromEntries(ORDEM_AREAS.map((a) => [a, AREAS[a].filter((re) => re.test(id)).length]));
   const base = { ...pontos };
+  // as dependências confirmadas pesam mais que palavras soltas
+  const tem = (l) => confirmada.some((x) => l.includes(x));
+  if (tem(DE_CELULAR)) pontos.mobile += 2;
+  if (tem(DE_JOGO)) pontos.jogos += 2;
+  if (tem(DE_SERVIDOR)) pontos.backend += 1.5;
+  if (tem(DE_TELA) && !tem(DE_SERVIDOR) && !tem(DE_CELULAR)) pontos.frontend += 1.5;
   // a linguagem já diz muito
   if (it.language === 'Jupyter Notebook') pontos.dados += 2;
   if (it.language === 'HCL') pontos.devops += 2;
@@ -337,16 +367,34 @@ function foraDoEscopo(it) {
   return null;
 }
 
-function etiquetas(it, t, dica) {
+// No arquivo de dependências, alguns nomes são diferentes do que se escreve no README.
+const NO_MANIFESTO = {
+  NestJS: /@nestjs\//, AdonisJS: /@adonisjs\//, Angular: /@angular\/core/, Redux: /\b(redux|@reduxjs)/, 'TanStack Query': /@tanstack\/(react-)?query|react-query/,
+  'React Native': /"react-native"/, React: /"react"\s*:/, Vue: /"vue"\s*:/, 'Next.js': /"next"\s*:/, Svelte: /"svelte"|@sveltejs/, Expo: /"expo"\s*:/,
+  DRF: /djangorestframework/i, 'scikit-learn': /scikit-learn|sklearn/i, PyTorch: /^torch\b|\btorch[>=<~ ]|"torch"/im, TensorFlow: /tensorflow|keras/i, BeautifulSoup: /beautifulsoup4|bs4/i,
+  Click: /^click\b/im, Typer: /^typer\b/im, Textual: /^textual\b/im, 'discord.py': /discord\.py/i, Pygame: /pygame/i, Pytest: /pytest/i, Celery: /celery/i,
+  'Spring Boot': /spring-boot/, JPA: /(jpa|hibernate)/i, JUnit: /junit/i, LibGDX: /gdx/i, Ktor: /ktor/i, Quarkus: /quarkus/i,
+  'Jetpack Compose': /compose/i, Room: /androidx\.room/, Hilt: /(hilt|dagger)/i,
+  Gin: /gin-gonic\/gin/, Echo: /labstack\/echo/, Fiber: /gofiber\/fiber/, GORM: /gorm\.io\/gorm|jinzhu\/gorm/, Cobra: /spf13\/cobra/, 'Bubble Tea': /charmbracelet\/bubbletea/,
+  Axum: /^axum\b/m, Actix: /^actix-web\b/m, Rocket: /^rocket\b/m, Diesel: /^diesel\b/m, SQLx: /^sqlx\b/m, Bevy: /^bevy\b/m, Clap: /^clap\b/m, Ratatui: /^ratatui\b/m,
+  Laravel: /laravel\/framework/, Rails: /gem ['"]rails['"]/, Phoenix: /:phoenix\b/, Flutter: /sdk: flutter/, Bloc: /\bbloc:|flutter_bloc/, Riverpod: /riverpod/,
+};
+
+function etiquetas(it, t, dica, man = null) {
   const amplo = tudo(it, t);
   const curto = cabeca(it, t);
   const identidade = identidadeDe(it);
-  const { area, sinais } = areaDe(it, dica);
+  // frameworks e bibliotecas: com arquivo de dependências, só o que está nele; sem, o que o README cita
+  const stack = STACK.filter(([nome, re, langs]) => {
+    if (langs && !langs.includes(it.language)) return false;
+    if (langs && man) return (NO_MANIFESTO[nome] ?? re).test(man);
+    return re.test(amplo);
+  }).map(([nome]) => nome).slice(0, 8);
+  const { area, sinais } = areaDe(it, dica, man ? stack : []);
   const temas = TEMAS.filter(([, re, areas]) => (!areas.length || areas.includes(area)) && re.test(curto)).map(([id]) => id);
   if (/(desafio|challenge|rinha|teste t[ée]cnico|technical test|take[- ]home|frontend mentor)/i.test(identidade)) temas.push('desafios');
   if (area === 'backend' && !temas.includes('apis') && /api/i.test(curto)) temas.unshift('apis');
   const dominio = DOMINIOS.find(([, re]) => re.test(identidade))?.[0] ?? null;
-  const stack = STACK.filter(([, re, langs]) => (!langs || langs.includes(it.language)) && re.test(amplo)).map(([nome]) => nome).slice(0, 8);
   let api;
   if (area === 'backend') {
     api = [];
@@ -414,7 +462,8 @@ if (REAVALIAR) {
     const it = { full_name: x.repo, description: x.nota, topics: [], language: x.lang, stargazers_count: x.estrelas };
     const fora = foraDoEscopo(it);
     if (fora) return conta(fora);
-    novos.push(entradaDe(it, etiquetas(it, t, x.area ?? 'backend'), nota));
+    const man = await manifesto(x.repo, x.lang);
+    novos.push(entradaDe(it, etiquetas(it, t, x.area ?? 'backend', man), nota));
   }, 'READMEs');
   gravar(novos);
   console.log(`Resumo: antes=${atual.length} depois=${novos.length}`);
@@ -488,7 +537,7 @@ await emLotes(ler, 16, async ({ it, dica }) => {
   const t = await readme(it.full_name, it.default_branch);
   const { nota, motivo } = notaDoReadme(t);
   if (nota < NOTA_MINIMA) return conta(motivo || 'nota baixa');
-  const e = etiquetas(it, t, dica);
+  const e = etiquetas(it, t, dica, await manifesto(it.full_name, it.language));
   if (e.sinais === 0 && !e.stack.length) return conta('sem sinal da área');
   aprovados.push(entradaDe(it, e, nota));
 }, 'READMEs');

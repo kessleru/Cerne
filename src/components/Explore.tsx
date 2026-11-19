@@ -99,7 +99,7 @@ function sorteio(semente: number) {
   };
 }
 /** Mistura com peso: README mais completo tende a vir antes, mas cada abertura traz uma ordem nova. */
-function misturar(lista: Entrada[], semente: number) {
+export function misturar(lista: Entrada[], semente: number) {
   const r = sorteio(semente);
   return lista
     .map((e) => ({ e, k: Math.pow(r(), 1 / Math.max(1, (e.readme ?? 14) - 8)) }))
@@ -113,7 +113,7 @@ function ordenar(lista: Entrada[], ordem: Ordem, semente: number) {
   if (ordem === 'estrelas') return l.sort((a, b) => (b.estrelas ?? 0) - (a.estrelas ?? 0));
   return l.sort((a, b) => (a.estrelas ?? 0) - (b.estrelas ?? 0) || (b.readme ?? 0) - (a.readme ?? 0));
 }
-const novaSemente = () => Math.floor(Math.random() * 2 ** 31);
+export const novaSemente = () => Math.floor(Math.random() * 2 ** 31);
 
 const POR_PAGINA = 24;
 const VISIVEIS = 8; // chips por linha de filtro antes do +N
@@ -545,12 +545,14 @@ function RepoCard({ r, feito, onOpen }: { r: Entrada; feito: boolean; onOpen: (l
 function Famosos({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const { icons } = usePrefs();
   const [cat, setCat] = useState<(typeof CATEGORIAS)[number]>('Todos');
-  const lista = useMemo(() => (cat === 'Todos' ? FAMOSOS : FAMOSOS.filter((f) => f.famoso === cat)), [cat]);
+  // ordem nova a cada visita e a cada categoria aberta
+  const [semente, setSemente] = useState(novaSemente);
+  const lista = useMemo(() => misturar(cat === 'Todos' ? FAMOSOS : FAMOSOS.filter((f) => f.famoso === cat), semente), [cat, semente]);
   return (
     <div className="ks-famous">
       <div className="ks-famous__cats" role="group" aria-label="Categoria">
         {CATEGORIAS.map((c) => (
-          <button key={c} type="button" className="ks-famous__cat" aria-pressed={cat === c} onClick={() => setCat(c)}>{c}</button>
+          <button key={c} type="button" className="ks-famous__cat" aria-pressed={cat === c} onClick={() => { setCat(c); setSemente(novaSemente()); }}>{c}</button>
         ))}
       </div>
       <ul className="ks-famous__grid">

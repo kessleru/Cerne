@@ -1,6 +1,7 @@
 // Visão geral de um repositório: a página de introdução antes do código.
 // Dados do repositório, o README renderizado (é ele que contextualiza o projeto) e a estrutura.
 import { useEffect, useMemo, useState } from 'react';
+import { arquivoDeEntrada } from '../lib/entrada';
 import { AREAS, entradaDe, extDaLinguagem, useEstudo, type Entrada } from '../data/catalogo';
 import type { RepoInfo, RepoSource, TreeEntry } from '../data/types';
 import { FileIcon } from '../icons/FileIcon';
@@ -91,7 +92,7 @@ export function Overview(p: Props) {
 }
 
 // ---------- topo ----------
-function Hero({ owner, repo, info, entrada, readme, pack, onPath }: Props & { entrada: Entrada | null; readme: string | null }) {
+function Hero({ owner, repo, info, entrada, readme, pack, onPath, entries }: Props & { entrada: Entrada | null; readme: string | null }) {
   const feitos = estudados.use();
   const slug = `${owner}/${repo}`;
   const feito = feitos.has(entrada?.repo ?? slug);
@@ -101,7 +102,9 @@ function Hero({ owner, repo, info, entrada, readme, pack, onPath }: Props & { en
   if (info?.forks !== undefined) stats.push({ icon: 'fork', texto: milhar(info.forks), tip: 'Forks' });
   if (info?.license) stats.push({ icon: 'scale', texto: info.license, tip: 'Licença' });
   if (info?.pushedAt) stats.push({ icon: 'history', texto: relativo(info.pushedAt), tip: 'Último envio' });
-  const inicio = entrada?.start ?? readme;
+  // começa pelo ponto de entrada do projeto; o README já está aqui embaixo, então é só o último recurso
+  const entradaAchada = useMemo(() => (entries ? arquivoDeEntrada(entries.map((e) => e.path)) : null), [entries]);
+  const inicio = entrada?.start ?? entradaAchada ?? readme;
   return (
     <header className="ks-ov__hero">
       {info?.avatar ? (

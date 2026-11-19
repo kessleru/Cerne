@@ -828,7 +828,7 @@ a.key { text-decoration: none; }
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.ks-tree__row:is(:hover, :focus-visible, [aria-selected='true']) .ks-tree__hide { opacity: 1; }
+.ks-tree__row:is(:hover, :focus-visible) .ks-tree__hide { opacity: 1; }
 .ks-tree__hide:hover { background: var(--ctp-surface-0); color: var(--ctp-text); }
 @media (hover: none) { .ks-tree__hide { opacity: 0.7; } }
 
