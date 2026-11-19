@@ -86,12 +86,12 @@ export function resolveIcon(pack: IconPack, path: string, isDir: boolean, open =
   const base = path.slice(path.lastIndexOf('/') + 1);
   let hit: IconData | null;
   if (isDir) {
-    const name = nm.folder[base];
+    const name = nm.folder[base] ?? nm.folder[base.toLowerCase()];
     hit = open ? pick(set, ...(name ? [nm.open(name)] : []), nm.open(nm.defaultFolder), nm.defaultFolder) : pick(set, ...(name ? [name] : []), nm.defaultFolder);
   } else {
     const dot = base.lastIndexOf('.');
     const ext = dot > 0 ? base.slice(dot + 1).toLowerCase() : '';
-    const name = nm.file[base] ?? nm.ext[ext];
+    const name = nm.file[base] ?? nm.file[base.toLowerCase()] ?? (/^dockerfile/i.test(base) ? nm.ext.dockerfile : undefined) ?? nm.ext[ext];
     hit = pick(set, ...(name ? [name] : []), nm.defaultFile);
   }
   if (!hit) return null;

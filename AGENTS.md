@@ -14,11 +14,11 @@ Visualizador de repositórios do GitHub. Site estático (Vite, React, TypeScript
 ## Mapa
 | Pasta | O que tem |
 |---|---|
-| `src/components/` | Telas e partes da interface (`Workspace`, `Entry`, `Account` (entrar com token, perfil do GitHub com repositórios e guia ilustrado), `Avatar`, `ThemeToggle`, `Preferences`, `Tree`, `Tabs`, `CommandPalette`, `SnippetDialog`, `CommitLoader`, `Tooltip`, `Select`) |
+| `src/components/` | Telas e partes da interface (`Workspace`, `Entry`, `Account` (entrar com token, perfil do GitHub com repositórios e guia ilustrado), `Avatar`, `ThemeToggle`, `Explore` (Para você, Estudar, Famosos), `Preferences`, `Tree`, `Tabs`, `CommandPalette`, `SnippetDialog`, `CommitLoader`, `Tooltip`, `Select`) |
 | `src/code/` | `CodeView` (só as linhas visíveis), worker do Shiki |
-| `src/data/` | Contrato `types.ts` (`RepoSource`), `source.ts` (escolhe a fonte), `github/` (API, cota, erros), `cache/` (IndexedDB, separado por token) |
+| `src/data/` | `explorar.ts` (curadoria das trilhas e dos famosos), contrato `types.ts` (`RepoSource`), `source.ts` (escolhe a fonte), `github/` (API, cota, erros), `cache/` (IndexedDB, separado por token) |
 | `src/mock/` | Repositório falso, usado só para `kessleru/exemplo` |
-| `src/kessleru/` | `tokens.css` e `bundle.css` copiados do cofre (não edite); `extensoes.css`, `extensoes-ui.css`, `conta.css` e `home.css` (o que o Cerne acrescenta) |
+| `src/kessleru/` | `tokens.css` e `bundle.css` copiados do cofre (não edite); `extensoes.css`, `extensoes-ui.css`, `conta.css`, `home.css` e `explorar.css` (o que o Cerne acrescenta) |
 | `src/state/` (inclui `account.ts`: conta e perfil), `src/lib/` (inclui `symbols.ts`, `zip.ts`, `tempo.ts`), `src/anim/`, `src/viewers/` (`data`, `media`: PDF, áudio, vídeo, fonte, ZIP, hex; `notebook`), `src/icons/` | Preferências e token; funções puras (rotas, busca, diff, símbolos, ZIP); animações; visualizadores; ícones |
 | `public/` | `tema-inicial.js` (claro/escuro antes do app), `404.html` e `restaurar-rota.js` (rotas no Pages), `sw.js` (offline), manifesto e ícones |
 

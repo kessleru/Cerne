@@ -20,6 +20,7 @@ import { Icon } from './Icon';
 import { Preferences } from './Preferences';
 import { Account } from './Account';
 import { AccountButton } from './Avatar';
+import { abrirAbaExplorar } from './Explore';
 import { Kbd, Meter, PaneState, Presence, Splitter, ToastHost, toast, useLoadingGate } from './parts';
 import { SnippetDialog } from './SnippetDialog';
 import { Select } from './Select';
@@ -178,7 +179,12 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
         setTabs([{ path: readme, preview: true, pinned: false }]);
         setActive(readme);
       }
-    } else if (!(entries as TreeData).truncated) setMissing(session.path);
+    } else if ((entries as TreeData).truncated && session.path) {
+      // árvore cortada pelo GitHub (repositório enorme): o arquivo pode existir fora do que veio; abre direto
+      setTabs([{ path: session.path, preview: false, pinned: false }]);
+      setActive(session.path);
+      setReveal({ path: session.path, nonce: Date.now() });
+    } else setMissing(session.path);
   }, [entries, session.path, session.lines, refName]);
 
   // anima a árvore em cascata na primeira vez
@@ -350,6 +356,8 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     add('close', 'Arquivo', 'Fechar a aba atual', () => active && closeTab(active), ['Ctrl', 'W']);
     add('ref', 'Repositório', 'Trocar ramo, tag ou commit...', () => setRefOpen(true));
     add('exit', 'Repositório', 'Voltar ao início', onExit, ['Alt', 'Home']);
+    add('estudar', 'Explorar', 'Trilhas de estudo: repositórios para aprender', () => { abrirAbaExplorar('estudar'); onExit(); });
+    add('famosos', 'Explorar', 'Repositórios famosos', () => { abrirAbaExplorar('famosos'); onExit(); });
     for (const a of ['system', 'light', 'dark'] as const) add('aparencia-' + a, 'Tema', `Claro ou escuro: ${APPEARANCE_LABELS[a]}`, () => setPref({ appearance: a }));
     for (const t of DARK_THEMES) add('tema-' + t.id, 'Tema', `Sabor do escuro: ${t.label}`, () => setPref({ theme: t.id }));
     for (const a of ACCENTS) add('acento-' + a, 'Tema', `Cor de destaque: ${a}`, () => setPref({ accent: a }));

@@ -37,6 +37,14 @@ Sem token, o GitHub libera 60 chamadas por hora e só repositórios públicos. O
 - um guia ilustrado, passo a passo, mostra como criar o token (fine-grained, recomendado, ou clássico), com um atalho que abre o formulário do GitHub já preenchido (nome, 90 dias, Contents só leitura);
 - o token fica só neste navegador (ou só na aba, se "Lembrar" estiver desligado) e só vai no cabeçalho `Authorization`.
 
+## Explorar
+
+Na página inicial, três abas: **Para você** (recentes e seus repositórios), **Estudar** e **Famosos**.
+
+- **Estudar:** 16 trilhas (8 linguagens e 8 temas, como APIs, compiladores, bancos de dados e IA), do iniciante ao avançado. Cada repositório abre direto no arquivo por onde começar, e dá para marcar o que já foi estudado (fica neste navegador).
+- **Famosos:** 27 repositórios de referência (Linux, Go, React, PostgreSQL, llama.cpp…), filtráveis por área.
+- Critério: só código de verdade (nada de listas de links), legível e mantido ou clássico. Os arquivos iniciais foram conferidos no ramo padrão de cada repositório. A curadoria fica em `src/data/explorar.ts`.
+
 ## Arquivos
 
 Código com destaque em cerca de 150 linguagens (210 extensões e nomes como `Dockerfile` e `Makefile`), carregadas só quando o arquivo abre. Visualizadores próprios para Markdown, CSV/TSV, JSON, notebooks Jupyter, imagens (quadriculado, dimensões, 100%), PDF, áudio, vídeo, fontes, pacotes ZIP (lista do conteúdo) e binários (hexadecimal). PDF, mídia, fontes e pacotes vão até 25 MB; texto até 1 MB.

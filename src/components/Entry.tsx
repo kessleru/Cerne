@@ -7,6 +7,7 @@ import { source } from '../data/source';
 import { Account } from './Account';
 import { AccountButton } from './Avatar';
 import { ThemeToggle } from './ThemeToggle';
+import { Explore } from './Explore';
 import { Icon, type IconName } from './Icon';
 import { Preferences } from './Preferences';
 import { Kbd, Meter, Presence, Rings, ToastHost } from './parts';
@@ -266,27 +267,25 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
           </p>
         </section>
 
-        <div className={`ks-home__cards${cards.length > 1 ? ' is-two' : ''}`} ref={listRef} onKeyDown={onListKey}>
-          {cards.map((c) => (
-            <section key={c.id} className="ks-home__card" aria-labelledby={`home-${c.id}`}>
-              <div className="ks-home__cardhead">
-                <h2 id={`home-${c.id}`}>{c.title}</h2>
-                {c.action}
-              </div>
-              <div className="ks-home__cardlist" role="group" aria-labelledby={`home-${c.id}`}>
-                {c.items.length ? c.items.map(row) : c.empty}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        <ul className="ks-home__features" aria-label="O que o Cerne faz">
-          <Feature icon="panelLeft" title="Árvore e abas" tip="Pastas, ícones por tipo e várias abas" />
-          <Feature icon="search" title="Busca" tip="Arquivos, comandos, linhas e símbolos: Ctrl K" />
-          <Feature icon="history" title="Histórico" tip="Commits do arquivo e o que mudou" />
-          <Feature icon="code" title="200+ formatos" tip="Código, notebooks, PDF, áudio, vídeo, fontes e ZIP" />
-          <Feature icon="image" title="Imagem do trecho" tip="Exporte linhas como imagem" />
-        </ul>
+        <Explore
+          onOpen={onOpen}
+          padrao={recentItems.length || conta.status === 'ok' ? 'voce' : 'estudar'}
+          paraVoce={
+          <div className={`ks-home__cards${cards.length > 1 ? ' is-two' : ''}`} ref={listRef} onKeyDown={onListKey}>
+            {cards.map((c) => (
+              <section key={c.id} className="ks-home__card" aria-labelledby={`home-${c.id}`}>
+                <div className="ks-home__cardhead">
+                  <h2 id={`home-${c.id}`}>{c.title}</h2>
+                  {c.action}
+                </div>
+                <div className="ks-home__cardlist" role="group" aria-labelledby={`home-${c.id}`}>
+                  {c.items.length ? c.items.map(row) : c.empty}
+                </div>
+              </section>
+            ))}
+          </div>
+          }
+        />
       </div>
 
       {/* rodapé só quando há algo a dizer: cota baixa ou token vencido */}
@@ -312,14 +311,5 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
       <ToastHost />
       <Tooltip />
     </main>
-  );
-}
-
-function Feature({ icon, title, tip }: { icon: IconName; title: string; tip: string }) {
-  return (
-    <li className="ks-home__feature" data-tip={tip} tabIndex={0} aria-label={`${title}: ${tip}`}>
-      <Icon name={icon} size={14} />
-      {title}
-    </li>
   );
 }

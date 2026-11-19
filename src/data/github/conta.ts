@@ -121,3 +121,15 @@ export async function lerRepos(token: string): Promise<RepoDaConta[]> {
       atualizado: typeof r.pushed_at === 'string' ? r.pushed_at : typeof r.updated_at === 'string' ? r.updated_at : '',
     }));
 }
+
+/** Foto de uma conta pelo login (para quando o endereço pelo nome devolve a foto padrão). */
+export async function lerAvatar(login: string, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API}/users/${encodeURIComponent(login)}`, { headers: { Accept: ACEITA_JSON, Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { avatar_url?: unknown };
+    return typeof j.avatar_url === 'string' && j.avatar_url.startsWith('https://avatars.githubusercontent.com/') ? j.avatar_url : null;
+  } catch {
+    return null;
+  }
+}
