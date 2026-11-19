@@ -1,8 +1,7 @@
 // Notebook Jupyter (.ipynb): células de Markdown, código colorido pelo mesmo Shiki do CodeView e saídas
 // (texto, imagens PNG/JPEG/SVG em data:, erros). HTML das saídas nunca é injetado: vira texto.
-import { useEffect, useMemo, useState } from 'react';
-import { fetchPreview } from '../code/client';
-import type { Tok } from '../code/protocol';
+import { useMemo } from 'react';
+import { CodeBlock } from './codeblock';
 import { Icon } from '../components/Icon';
 import { MarkdownView } from './data';
 
@@ -63,7 +62,7 @@ export function NotebookView({ text, editorTheme }: { text: string; editorTheme:
             <>
               <div className="ks-nb__in">
                 <span className="ks-nb__n" aria-label={c.n ? `Execução ${c.n}` : 'Não executada'}>[{c.n ?? ' '}]</span>
-                <Bloco code={c.fonte} lang={c.tipo === 'code' ? lang : null} theme={editorTheme} />
+                <CodeBlock code={c.fonte} lang={c.tipo === 'code' ? lang : null} theme={editorTheme} className="ks-nb__code" />
               </div>
               {c.saidas.map((o, k) =>
                 o.tipo === 'imagem' ? (
@@ -77,33 +76,5 @@ export function NotebookView({ text, editorTheme }: { text: string; editorTheme:
         </section>
       ))}
     </div>
-  );
-}
-
-/** Trecho de código colorido (sem virtualização: células são curtas). */
-function Bloco({ code, lang, theme }: { code: string; lang: string | null; theme: string | null }) {
-  const [linhas, setLinhas] = useState<Tok[][] | null>(null);
-  const [fundo, setFundo] = useState<string | null>(null);
-  useEffect(() => {
-    let vivo = true;
-    void fetchPreview(theme, lang, code).then((r) => {
-      if (!vivo) return;
-      setLinhas(r.lines);
-      setFundo(r.data?.bg ?? null);
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [code, lang, theme]);
-  return (
-    <pre className="ks-nb__code" style={fundo ? { background: fundo } : undefined}>
-      {linhas
-        ? linhas.map((l, i) => (
-            <div key={i}>
-              {l.length ? l.map((t, k) => <span key={k} className={t.c} style={t.k || t.f ? { color: t.k, fontStyle: t.f && t.f & 1 ? 'italic' : undefined, fontWeight: t.f && t.f & 2 ? 700 : undefined } : undefined}>{t.t}</span>) : ' '}
-            </div>
-          ))
-        : code}
-    </pre>
   );
 }

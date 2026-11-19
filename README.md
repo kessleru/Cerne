@@ -37,13 +37,14 @@ Sem token, o GitHub libera 60 chamadas por hora e só repositórios públicos. O
 - um guia ilustrado, passo a passo, mostra como criar o token (fine-grained, recomendado, ou clássico), com um atalho que abre o formulário do GitHub já preenchido (nome, 90 dias, Contents só leitura);
 - o token fica só neste navegador (ou só na aba, se "Lembrar" estiver desligado) e só vai no cabeçalho `Authorization`.
 
-## Explorar
+## Explorar e estudar
 
-Na página inicial, três abas: **Para você** (recentes e seus repositórios), **Estudar** e **Famosos**.
+A página inicial mostra o catálogo (carrossel, números, um leitor de código e os temas) e três abas: **Para você**, **Estudar** e **Famosos**.
 
-- **Estudar:** 16 trilhas (8 linguagens e 8 temas, como APIs, compiladores, bancos de dados e IA), do iniciante ao avançado. Cada repositório abre direto no arquivo por onde começar, e dá para marcar o que já foi estudado (fica neste navegador).
-- **Famosos:** 27 repositórios de referência (Linux, Go, React, PostgreSQL, llama.cpp…), filtráveis por área.
-- Critério: só código de verdade (nada de listas de links), legível e mantido ou clássico. Os arquivos iniciais foram conferidos no ramo padrão de cada repositório. A curadoria fica em `src/data/explorar.ts`.
+- **Catálogo** em `src/data/catalogo/`: uma entrada por repositório, com etiquetas (linguagem, temas, tipo, API, stack). As trilhas se montam sozinhas, uma por linguagem e uma por tema, e ganham filtros para comparar (por exemplo, a mesma API em Express, FastAPI e Axum).
+- **Visão geral**: abrir um repositório mostra primeiro uma página de introdução com dados, README renderizado (imagens, HTML comum, links internos e código colorido) e a estrutura do projeto.
+- **Guias de estudo** escritos para quem estuda sozinho: o que é, por que ler, o que saber antes, como ler, conceitos explicados (glossário compartilhado) e um roteiro que abre cada arquivo no trecho certo, com a barra "Passo X de N" sobre o código.
+- Como acrescentar repositórios e guias: [`docs/catalogo.md`](docs/catalogo.md). Para conferir arquivos e trechos no GitHub: `node scripts/conferir-guias.mjs`.
 
 ## Arquivos
 

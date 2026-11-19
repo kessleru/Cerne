@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { cascadeTree, markScreenReady, withThemeTransition } from '../anim/motion';
 import { type CodeViewHandle, type FindMatch } from '../code/CodeView';
-import type { Commit, FileContent, Quota, Ref, Tree as TreeData, TreeEntry } from '../data/types';
+import type { Commit, FileContent, Quota, Ref, RepoInfo, Tree as TreeData, TreeEntry } from '../data/types';
 import { PACK_LABELS } from '../icons/packs';
 import { formatLineHash, parseLineHash, type LineRange } from '../lib/hash';
 import { baseName, langOf } from '../lib/lang';
 import { extractSymbols, hasSymbols } from '../lib/symbols';
 import { buildPath, parseRepoLink, type RepoLink } from '../lib/route';
 import { source } from '../data/source';
-import { ACCENTS, APPEARANCE_LABELS, DARK_THEMES, SCOPE_LABELS, prefsStore, reducedMotion, usePrefs, type Density, type EditorScope, type IconPack } from '../state/prefs';
+import { ACCENTS, APPEARANCE_LABELS, DARK_THEMES, SCOPE_LABELS, effectiveEditorTheme, prefsStore, reducedMotion, usePrefs, type Density, type EditorScope, type IconPack } from '../state/prefs';
 import { useEditorVars, varsToStyle } from '../state/editorTheme';
 import { useEditorThemes } from '../state/themes';
 import { CommitList, DiffView } from '../viewers/diff';
@@ -19,6 +19,9 @@ import { FilePane, codeStyle } from './FilePane';
 import { Icon } from './Icon';
 import { Preferences } from './Preferences';
 import { Account } from './Account';
+import { findReadme, GuideBar, Overview } from './Overview';
+import { entradaDe } from '../data/catalogo';
+import { passosVistos } from '../state/estudo';
 import { AccountButton } from './Avatar';
 import { abrirAbaExplorar } from './Explore';
 import { Kbd, Meter, PaneState, Presence, Splitter, ToastHost, toast, useLoadingGate } from './parts';
@@ -30,7 +33,7 @@ import { Tooltip } from './Tooltip';
 import { Tree } from './Tree';
 
 export type Session = { owner: string; repo: string; ref: string | null; path: string | null; lines: LineRange | null };
-type View = 'file' | 'history' | 'diff';
+type View = 'overview' | 'file' | 'history' | 'diff';
 type Demo = null | 'carregando' | 'erro' | 'cota';
 
 function useOnline() {
@@ -81,7 +84,12 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
   const [active, setActive] = useState<string | null>(null);
   const [split, setSplit] = useState<string | null>(null);
   const [sels, setSels] = useState<Record<string, LineRange | null>>({});
-  const [view, setView] = useState<View>('file');
+  const [view, setView] = useState<View>(session.path ? 'file' : 'overview');
+  const [info, setInfo] = useState<RepoInfo | null>(null);
+  const guia = useMemo(() => entradaDe(session.owner, session.repo)?.guia ?? null, [session.owner, session.repo]);
+  const [guiaPasso, setGuiaPasso] = useState<number | null>(null);
+  /** abrir o arquivo do passo e ir até a âncora quando ele carregar */
+  const anchorGo = useRef<{ path: string; ancora: string } | null>(null);
   const [history, setHistory] = useState<{ path: string | null; commits: Commit[] } | null>(null);
   const [historyError, setHistoryError] = useState<{ path: string | null; message: string } | null>(null);
   const [diff, setDiff] = useState<{ commit: Commit; path: string; before: string; after: string } | null>(null);
@@ -133,15 +141,20 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     if (!refName) {
       source
         .getRepo(session.owner, session.repo)
-        .then((info) => !off && setRefName(info.defaultBranch))
+        .then((i) => {
+          if (off) return;
+          setInfo(i);
+          setRefName(i.defaultBranch);
+        })
         .catch((e: unknown) => !off && setTreeError(mensagem(e)));
       return () => {
         off = true;
       };
     }
     Promise.all([source.getRepo(session.owner, session.repo), source.listRefs(), source.getTree(refName)])
-      .then(([, r, t]) => {
+      .then(([i, r, t]) => {
         if (off) return;
+        setInfo(i);
         setRefs(r);
         setEntries(t);
         saveRecent(`${session.owner}/${session.repo}`);
@@ -165,7 +178,9 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
       performance.mark('cerne:abrir');
       return;
     }
-    // pasta (ou raiz): revela na árvore e abre o README dela, como o GitHub faz
+    // raiz: a visão geral (README e guia) já é a página inicial do repositório
+    if (!session.path) return;
+    // pasta: revela na árvore e abre o README dela, como o GitHub faz
     const dir = session.path ?? '';
     const isDir = !dir || entries.some((e) => e.path.startsWith(dir + '/'));
     if (isDir) {
@@ -249,6 +264,45 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
       if (active) setSels((s) => ({ ...s, [active]: r }));
     },
     [active],
+  );
+
+  // ---------- guia de estudo ----------
+  const openStep = useCallback(
+    (i: number) => {
+      const passo = guia?.passos[i];
+      if (!passo) return;
+      setGuiaPasso(i);
+      passosVistos.marcar(`${entradaDe(session.owner, session.repo)?.repo ?? `${session.owner}/${session.repo}`}#${i}`);
+      anchorGo.current = passo.ancora ? { path: passo.arquivo, ancora: passo.ancora } : null;
+      openFile(passo.arquivo, 'pin');
+      setReveal({ path: passo.arquivo, nonce: Date.now() });
+    },
+    [guia, openFile, session.owner, session.repo],
+  );
+
+  // o arquivo do passo carregou: vai até a primeira linha que contém a âncora e a seleciona
+  useEffect(() => {
+    const go = anchorGo.current;
+    if (!go || go.path !== active || !activeFile || activeFile.file.path !== active || !activeFile.lines) return;
+    anchorGo.current = null;
+    const idx = activeFile.lines.findIndex((l) => l.includes(go.ancora));
+    if (idx < 0) return;
+    const id = setTimeout(() => code.current?.scrollToLine(idx + 1, true), 150);
+    return () => clearTimeout(id);
+  }, [active, activeFile]);
+
+  /** abrir um caminho vindo da visão geral: arquivo abre, pasta é revelada na árvore */
+  const openPath = useCallback(
+    (path: string) => {
+      const limpo = path.replace(/\/$/, '');
+      if (entries?.some((e) => e.path === limpo)) openFile(limpo, 'pin');
+      else if (entries?.some((e) => e.path.startsWith(limpo + '/'))) {
+        setSideOpen(true);
+        if (narrow) setDrawer(true);
+      } else openFile(limpo, 'pin');
+      setReveal({ path: limpo, nonce: Date.now() });
+    },
+    [entries, openFile, narrow],
   );
 
   // vai à linha do link na primeira abertura
@@ -356,6 +410,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     add('close', 'Arquivo', 'Fechar a aba atual', () => active && closeTab(active), ['Ctrl', 'W']);
     add('ref', 'Repositório', 'Trocar ramo, tag ou commit...', () => setRefOpen(true));
     add('exit', 'Repositório', 'Voltar ao início', onExit, ['Alt', 'Home']);
+    add('visao', 'Repositório', guia ? 'Visão geral e guia de estudo' : 'Visão geral do repositório (README e estrutura)', () => setView('overview'));
     add('estudar', 'Explorar', 'Trilhas de estudo: repositórios para aprender', () => { abrirAbaExplorar('estudar'); onExit(); });
     add('famosos', 'Explorar', 'Repositórios famosos', () => { abrirAbaExplorar('famosos'); onExit(); });
     for (const a of ['system', 'light', 'dark'] as const) add('aparencia-' + a, 'Tema', `Claro ou escuro: ${APPEARANCE_LABELS[a]}`, () => setPref({ appearance: a }));
@@ -373,7 +428,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     add('demo-erro', 'Demonstrar estado', 'Demonstrar estado: erro', () => runDemo('erro'));
     add('demo-cota', 'Demonstrar estado', 'Demonstrar estado: cota esgotada', () => runDemo('cota'));
     return c;
-  }, [prefs, narrow, tabs, active, lines, commits, editorThemes, copyLink, openSnippet, openHistory, openDiff, pinTab, closeTab, onExit, setPref, runDemo]);
+  }, [prefs, narrow, tabs, active, lines, commits, editorThemes, copyLink, openSnippet, openHistory, openDiff, pinTab, closeTab, onExit, setPref, runDemo, guia]);
 
   // ---------- teclado ----------
   useEffect(() => {
@@ -435,6 +490,22 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
   // ---------- corpo do painel principal ----------
   let body: React.ReactNode;
   if (demo === 'carregando') body = <PaneState kind="loading" title="Carregando (demonstração)" />;
+  else if (view === 'overview' && !demo)
+    body = (
+      <Overview
+        owner={session.owner}
+        repo={session.repo}
+        refName={refName}
+        info={info}
+        entries={entries}
+        source={source}
+        pack={prefs.icons}
+        editorTheme={effectiveEditorTheme(prefs)}
+        onPath={openPath}
+        onStep={openStep}
+        onOpenRepo={onOpen ? (slug) => { const l = parseRepoLink(slug); if (l) onOpen(l); } : undefined}
+      />
+    );
   else if (demo === 'erro')
     body = (
       <PaneState kind="error" title="Algo deu errado (demonstração)" actions={<button type="button" className="key" onClick={clearDemo}>Tentar de novo</button>}>
@@ -511,6 +582,9 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
   else if (active)
     body = (
       <>
+        {guia && guiaPasso !== null && guia.passos[guiaPasso]?.arquivo === active && (
+          <GuideBar guia={guia} passo={guiaPasso} onStep={openStep} onOverview={() => setView('overview')} onClose={() => setGuiaPasso(null)} />
+        )}
         <FilePane
           source={source}
           refName={refName}
@@ -628,9 +702,16 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
             <Tabs tabs={tabs} active={active} pack={prefs.icons} onSelect={(p) => openFile(p, 'pin')} onClose={closeTab} onPin={pinTab} />
           )}
           <div className="ks-pane__head">
-            {active ? <Breadcrumb path={active} onCrumb={(f) => { setSideOpen(true); setReveal({ path: f, nonce: Date.now() }); }} /> : <span />}
+            {view === 'overview' ? (
+              <span className="ks-pane__title"><Icon name="bookOpen" size={14} /> Visão geral</span>
+            ) : active ? (
+              <Breadcrumb path={active} onCrumb={(f) => { setSideOpen(true); setReveal({ path: f, nonce: Date.now() }); }} />
+            ) : (
+              <span />
+            )}
             <div className="ks-pane__tools">
-              {view !== 'file' && active && <button type="button" className="ks-icon-btn" aria-label="Voltar ao arquivo" data-tip="Voltar ao arquivo" onClick={() => setView('file')}><Icon name="file" /></button>}
+              {view !== 'overview' && <button type="button" className="ks-icon-btn" aria-label="Visão geral do repositório" data-tip={guia ? 'Visão geral e guia' : 'Visão geral'} onClick={() => setView('overview')}><Icon name={guia ? 'graduation' : 'bookOpen'} /></button>}
+              {view !== 'file' && view !== 'overview' && active && <button type="button" className="ks-icon-btn" aria-label="Voltar ao arquivo" data-tip="Voltar ao arquivo" onClick={() => setView('file')}><Icon name="file" /></button>}
               {view === 'file' && active && lines && hasSymbols(lang?.shiki ?? null) && <button type="button" className="ks-icon-btn" aria-label="Ir para símbolo" data-tip="Símbolos" data-tip-key="Ctrl+Shift+O" onClick={() => setPalette({ initial: '@', origin: null })}><Icon name="list" /></button>}
               <button type="button" className="ks-icon-btn" aria-pressed={view === 'history'} aria-label="Histórico" data-tip="Histórico" data-tip-key="Alt+H" onClick={() => openHistory(active)}><Icon name="history" /></button>
               {active && commits[0] && <button type="button" className="ks-icon-btn" aria-pressed={view === 'diff'} aria-label="Mudanças do último commit" data-tip="Última mudança" data-tip-key="Alt+D" onClick={() => openDiff(commits[0]!, active)}><Icon name="diff" /></button>}
@@ -717,18 +798,6 @@ function centerOf(e: { currentTarget: Element; detail?: number }): { x: number; 
   if (e.detail === 0) return null; // acionado pelo teclado
   const r = e.currentTarget.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-}
-
-/** README da pasta (o primeiro que achar: README.md, readme.md, README, README.rst...). */
-function findReadme(paths: string[], dir: string): string | null {
-  const prefix = dir ? dir + '/' : '';
-  const nomes = paths.filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'));
-  const ordem = ['readme.md', 'readme.markdown', 'readme', 'readme.txt', 'readme.rst'];
-  for (const o of ordem) {
-    const achado = nomes.find((p) => p.slice(prefix.length).toLowerCase() === o);
-    if (achado) return achado;
-  }
-  return nomes.find((p) => /^readme\./i.test(p.slice(prefix.length))) ?? null;
 }
 
 /** Painel sem arquivo: os três atalhos que levam a algum lugar. */

@@ -69,7 +69,7 @@ export function parseInline(src: string): Inline[] {
       }
     }
     if (ch === '!' && src[i + 1] === '[') {
-      const m = /^!\[([^\]]*)\]\(([^)\s]+)\)/.exec(src.slice(i));
+      const m = /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/.exec(src.slice(i));
       if (m) {
         flush();
         out.push({ t: 'image', alt: m[1]!, src: m[2]! });
@@ -77,8 +77,17 @@ export function parseInline(src: string): Inline[] {
         continue;
       }
     }
+    if (ch === '[' && src[i + 1] === '!') {
+      const m = /^\[!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)\]\(([^)\s]+)\)/.exec(src.slice(i));
+      if (m) {
+        flush();
+        out.push({ t: 'link', href: safeHref(m[3]!), c: [{ t: 'image', alt: m[1]!, src: m[2]! }] });
+        i += m[0].length;
+        continue;
+      }
+    }
     if (ch === '[') {
-      const m = /^\[([^\]]+)\]\(([^)\s]+)\)/.exec(src.slice(i));
+      const m = /^\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/.exec(src.slice(i));
       if (m) {
         flush();
         out.push({ t: 'link', href: safeHref(m[2]!), c: parseInline(m[1]!) });
@@ -112,6 +121,43 @@ const splitRow = (line: string) =>
     .split('|')
     .map((c) => c.trim());
 
+/** HTML comum em README (img, a, h1..h6, p, br, details) vira Markdown; o resto das tags some.
+ *  Blocos de código ficam como estão. Nada aqui vira HTML de verdade: o React só desenha texto. */
+export function htmlParaMd(src: string): string {
+  const attr = (tag: string, nome: string) => new RegExp(`${nome}\\s*=\\s*["']([^"']*)["']`, 'i').exec(tag)?.[1] ?? '';
+  const img = (tag: string) => {
+    const s2 = attr(tag, 'src');
+    return s2 ? `![${attr(tag, 'alt')}](${s2.replace(/\s/g, '%20')})` : '';
+  };
+  const partes = src.replace(/\r\n?/g, '\n').split(/(^(?:```|~~~)[^\n]*\n[\s\S]*?^(?:```|~~~)\s*$)/m);
+  return partes
+    .map((p, k) => {
+      if (k % 2 === 1) return p; // bloco de código
+      return p
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, '')
+        .replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, (m, inner: string) => {
+          const href = attr(m, 'href');
+          const im = /<img\b[^>]*>/i.exec(inner);
+          if (im) return href ? `[${img(im[0])}](${href})` : img(im[0]);
+          const t = inner.replace(/<[^>]+>/g, '').trim();
+          return href && t ? `[${t}](${href})` : t;
+        })
+        .replace(/<img\b[^>]*>/gi, (m) => img(m))
+        .replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_m, n: string, t: string) => `\n${'#'.repeat(Number(n))} ${t.replace(/<[^>]+>/g, '').trim()}\n`)
+        .replace(/<summary\b[^>]*>([\s\S]*?)<\/summary>/gi, (_m, t: string) => `\n**${t.replace(/<[^>]+>/g, '').trim()}**\n`)
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(p|div|details|picture|center|table|tr|td|th|tbody|thead)\b[^>]*>/gi, '\n')
+        .replace(/<\/?[a-z][a-z0-9-]*\b[^>]*>/gi, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"');
+    })
+    .join('');
+}
+
 export function parseMarkdown(src: string): Block[] {
   const lines = src.replace(/\r\n?/g, '\n').split('\n');
   const out: Block[] = [];
@@ -122,13 +168,14 @@ export function parseMarkdown(src: string): Block[] {
       i++;
       continue;
     }
-    const fence = /^```\s*([\w+-]*)\s*$/.exec(line);
+    const fence = /^\s*(```|~~~)\s*([\w+#.-]*)/.exec(line);
     if (fence) {
       const body: string[] = [];
+      const ind = /^\s*/.exec(line)![0].length;
       i++;
-      while (i < lines.length && !/^```\s*$/.test(lines[i]!)) body.push(lines[i++]!);
+      while (i < lines.length && !new RegExp(`^\\s*${fence[1]}\\s*$`).test(lines[i]!)) body.push(lines[i++]!.slice(ind));
       i++;
-      out.push({ t: 'code', lang: fence[1] ?? '', v: body.join('\n') });
+      out.push({ t: 'code', lang: fence[2] ?? '', v: body.join('\n') });
       continue;
     }
     const h = /^(#{1,6})\s+(.*)$/.exec(line);
@@ -171,7 +218,7 @@ export function parseMarkdown(src: string): Block[] {
       continue;
     }
     const para: string[] = [];
-    while (i < lines.length && lines[i]!.trim() && !/^(#{1,6}\s|```|>|\s*([-*+]|\d+\.)\s)/.test(lines[i]!)) para.push(lines[i++]!);
+    while (i < lines.length && lines[i]!.trim() && !/^(#{1,6}\s|\s*```|\s*~~~|>|\s*([-*+]|\d+\.)\s)/.test(lines[i]!)) para.push(lines[i++]!);
     if (!para.length) {
       para.push(line);
       i++;

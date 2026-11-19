@@ -167,7 +167,11 @@ export class GitHubSource implements RepoSource {
   }
 
   private async infoDoRepo(slug: string): Promise<RepoInfo> {
-    const j = await this.mutavel<{ name?: string; owner?: { login?: string }; description?: string | null; default_branch?: string }>(
+    const j = await this.mutavel<{
+      name?: string; owner?: { login?: string; avatar_url?: string }; description?: string | null; default_branch?: string;
+      stargazers_count?: number; forks_count?: number; language?: string | null; license?: { spdx_id?: string; name?: string } | null;
+      topics?: string[]; homepage?: string | null; pushed_at?: string; archived?: boolean;
+    }>(
       `repo:${slug}`,
       `${API}/repos/${slugUrl(slug)}`,
       { ctx: { oque: 'repo' } },
@@ -175,7 +179,23 @@ export class GitHubSource implements RepoSource {
     const [owner = '', name = ''] = slug.split('/');
     const defaultBranch = j.default_branch ?? 'main';
     this.defaults.set(slug, defaultBranch);
-    return { owner: j.owner?.login ?? owner, name: j.name ?? name, description: j.description ?? '', defaultBranch };
+    const avatar = j.owner?.avatar_url?.startsWith('https://avatars.githubusercontent.com/') ? j.owner.avatar_url : undefined;
+    const site = typeof j.homepage === 'string' && /^https?:\/\//i.test(j.homepage) ? j.homepage : null;
+    return {
+      owner: j.owner?.login ?? owner,
+      name: j.name ?? name,
+      description: j.description ?? '',
+      defaultBranch,
+      stars: j.stargazers_count,
+      forks: j.forks_count,
+      language: j.language ?? null,
+      license: j.license ? (j.license.spdx_id && j.license.spdx_id !== 'NOASSERTION' ? j.license.spdx_id : j.license.name ?? null) : null,
+      topics: Array.isArray(j.topics) ? j.topics.slice(0, 12) : [],
+      homepage: site,
+      pushedAt: j.pushed_at,
+      avatar,
+      archived: j.archived === true,
+    };
   }
 
   listRefs(): Promise<Ref[]> {

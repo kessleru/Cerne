@@ -44,6 +44,17 @@ export type RepoInfo = {
   name: string;
   description: string;
   defaultBranch: string;
+  // da mesma resposta de /repos (sem chamada a mais); podem faltar no repositório falso
+  stars?: number;
+  forks?: number;
+  language?: string | null;
+  license?: string | null;
+  topics?: string[];
+  homepage?: string | null;
+  pushedAt?: string;
+  /** foto do dono (avatars.githubusercontent.com) */
+  avatar?: string;
+  archived?: boolean;
 };
 
 export type Quota = {

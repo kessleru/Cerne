@@ -34,7 +34,19 @@ export class MockSource implements RepoSource {
   async getRepo(owner: string, name: string): Promise<RepoInfo> {
     await sleep(60);
     this.spend();
-    return { owner, name, description: 'Repositório de demonstração do Cerne (dados falsos).', defaultBranch: 'main' };
+    return {
+      owner,
+      name,
+      description: 'Repositório de demonstração do Cerne (dados falsos).',
+      defaultBranch: 'main',
+      stars: 1284,
+      forks: 96,
+      language: 'TypeScript',
+      license: 'MIT',
+      topics: ['react', 'vite', 'typescript', 'demonstracao'],
+      homepage: null,
+      pushedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+    };
   }
 
   async listRefs(): Promise<Ref[]> {
