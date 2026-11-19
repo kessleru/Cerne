@@ -8,6 +8,7 @@ import { getToken } from '../state/token';
 import { usePrefs } from '../state/prefs';
 import { estudados } from '../state/estudo';
 import { Icon, type IconName } from './Icon';
+import { Select } from './Select';
 
 // Explorar: "Para você" (recentes, seus repositórios), trilhas de estudo e repositórios famosos.
 
@@ -41,29 +42,82 @@ const abrir = (r: Entrada, onOpen: (l: RepoLink) => void) => {
 };
 
 type Campo = 'lang' | 'dominio' | 'api' | 'stack';
-type Filtros = Partial<Record<Campo, string>>;
+type Filtros = Partial<Record<Campo, string[]>>;
 const valorDe = (e: Entrada, c: Campo): string[] => (c === 'lang' ? [e.lang] : c === 'dominio' ? (e.dominio ? [e.dominio] : []) : c === 'api' ? (e.api ?? []) : (e.stack ?? []));
-const casa = (e: Entrada, f: Filtros) => (Object.keys(f) as Campo[]).every((c) => valorDe(e, c).includes(f[c]!));
+// Stack e API somam ("Express e Redis e MongoDB": o projeto tem todos); linguagem e assunto são alternativas ("TypeScript ou JavaScript").
+const SOMA: Record<Campo, boolean> = { stack: true, api: true, lang: false, dominio: false };
+const casaCampo = (e: Entrada, c: Campo, vs: string[]) => {
+  const tem = valorDe(e, c);
+  return SOMA[c] ? vs.every((v) => tem.includes(v)) : vs.some((v) => tem.includes(v));
+};
+const casa = (e: Entrada, f: Filtros, menos?: Campo) =>
+  (Object.keys(f) as Campo[]).every((c) => c === menos || !f[c]?.length || casaCampo(e, c, f[c]!));
+const qtdFiltros = (f: Filtros) => Object.values(f).reduce((n, vs) => n + (vs?.length ?? 0), 0);
 
-/** Filtros para comparar dentro da lista: só aparecem quando há o que comparar. */
-// Cada linha conta o que sobra com os outros filtros ligados; o valor escolhido continua visível.
-function facetasDe(lista: Entrada[], grupo: Trilha['grupo'], filtros: Filtros): { titulo: string; campo: Campo; valores: [string, number][] }[] {
+type Faceta = { titulo: string; campo: Campo; dica: string; valores: [string, number][] };
+/**
+ * Filtros para comparar dentro da lista: só aparecem quando há o que comparar.
+ * Em linguagem e assunto (alternativas), a contagem ignora o próprio campo; em stack e API (somam),
+ * conta quantos sobrariam ao acrescentar aquele valor.
+ */
+function facetasDe(lista: Entrada[], grupo: Trilha['grupo'], filtros: Filtros): Faceta[] {
   const conta = (c: Campo, max: number) => {
-    const { [c]: escolhido, ...outros } = filtros;
+    const escolhidos = filtros[c] ?? [];
     const m = new Map<string, number>();
-    for (const e of lista) if (casa(e, outros)) for (const v of valorDe(e, c)) m.set(v, (m.get(v) ?? 0) + 1);
-    return [...m].filter(([v, n]) => n >= 2 || v === escolhido).sort((a, b) => b[1] - a[1]).slice(0, max);
+    for (const e of lista) if (casa(e, filtros, SOMA[c] ? undefined : c)) for (const v of valorDe(e, c)) m.set(v, (m.get(v) ?? 0) + 1);
+    for (const v of escolhidos) if (!m.has(v)) m.set(v, 0);
+    const lista_ = [...m].filter(([v, n]) => n >= 2 || escolhidos.includes(v) || (SOMA[c] && n >= 1 && escolhidos.length > 0));
+    return lista_.sort((a, b) => Number(escolhidos.includes(b[0])) - Number(escolhidos.includes(a[0])) || b[1] - a[1]).slice(0, max);
   };
-  const out: { titulo: string; campo: Campo; valores: [string, number][] }[] = [];
-  if (grupo !== 'Linguagens') out.push({ titulo: 'Linguagem', campo: 'lang', valores: conta('lang', 20) });
-  out.push({ titulo: 'Assunto', campo: 'dominio', valores: conta('dominio', 24) });
-  out.push({ titulo: 'Stack', campo: 'stack', valores: conta('stack', 40) });
-  out.push({ titulo: 'API', campo: 'api', valores: conta('api', 4) });
-  return out.filter((f) => f.valores.length > 1 || filtros[f.campo]);
+  const out: Faceta[] = [];
+  if (grupo !== 'Linguagens') out.push({ titulo: 'Linguagem', campo: 'lang', dica: 'uma ou outra', valores: conta('lang', 20) });
+  out.push({ titulo: 'Assunto', campo: 'dominio', dica: 'um ou outro', valores: conta('dominio', 40) });
+  out.push({ titulo: 'Stack', campo: 'stack', dica: 'todas juntas', valores: conta('stack', 60) });
+  out.push({ titulo: 'API', campo: 'api', dica: 'todas juntas', valores: conta('api', 4) });
+  return out.filter((f) => f.valores.length > 1 || filtros[f.campo]?.length);
 }
 
+// ---------- ordem ----------
+type Ordem = 'misturar' | 'readme' | 'estrelas' | 'escondidos';
+const ORDENS: { value: Ordem; label: string }[] = [
+  { value: 'misturar', label: 'Misturado' },
+  { value: 'readme', label: 'README mais completo' },
+  { value: 'estrelas', label: 'Mais estrelas' },
+  { value: 'escondidos', label: 'Menos conhecidos' },
+];
+const ESTRELAS = [0, 10, 50, 100, 500];
+
+/** Gerador pseudoaleatório com semente: a mesma semente dá a mesma ordem (a lista não pula a cada clique). */
+function sorteio(semente: number) {
+  let a = semente >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+/** Mistura com peso: README mais completo tende a vir antes, mas cada abertura traz uma ordem nova. */
+function misturar(lista: Entrada[], semente: number) {
+  const r = sorteio(semente);
+  return lista
+    .map((e) => ({ e, k: Math.pow(r(), 1 / Math.max(1, (e.readme ?? 14) - 8)) }))
+    .sort((a, b) => b.k - a.k)
+    .map((x) => x.e);
+}
+function ordenar(lista: Entrada[], ordem: Ordem, semente: number) {
+  if (ordem === 'misturar') return misturar(lista, semente);
+  const l = [...lista];
+  if (ordem === 'readme') return l.sort((a, b) => (b.readme ?? 0) - (a.readme ?? 0) || (b.estrelas ?? 0) - (a.estrelas ?? 0));
+  if (ordem === 'estrelas') return l.sort((a, b) => (b.estrelas ?? 0) - (a.estrelas ?? 0));
+  return l.sort((a, b) => (a.estrelas ?? 0) - (b.estrelas ?? 0) || (b.readme ?? 0) - (a.readme ?? 0));
+}
+const novaSemente = () => Math.floor(Math.random() * 2 ** 31);
+
 const POR_PAGINA = 24;
-const VISIVEIS = 7; // chips por linha de filtro antes do +N
+const VISIVEIS = 8; // chips por linha de filtro antes do +N
+const ORDEM_KEY = 'cerne:ordem';
 
 /** Deixa a próxima visita à página inicial já numa aba (usado pela paleta). */
 export function abrirAbaExplorar(a: Aba) {
@@ -137,6 +191,12 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const [q, setQ] = useState('');
   const [mostrar, setMostrar] = useState(POR_PAGINA);
   const [abertas, setAbertas] = useState<Set<Campo>>(() => new Set());
+  const [painel, setPainel] = useState(false);
+  const [minEstrelas, setMinEstrelas] = useState(0);
+  const [semFeitos, setSemFeitos] = useState(false);
+  const [ordem, setOrdem] = useState<Ordem>(() => (ORDENS.some((o) => o.value === ler(ORDEM_KEY)) ? (ler(ORDEM_KEY) as Ordem) : 'misturar'));
+  // uma semente nova a cada lista aberta: a mesma lista nunca começa igual
+  const [semente, setSemente] = useState(novaSemente);
   const iconPack = usePrefs().icons;
   const feitosAgora = useFeitos();
   const estudo = useEstudo();
@@ -149,6 +209,8 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     setQ('');
     setMostrar(POR_PAGINA);
     setAbertas(new Set());
+    setMinEstrelas(0);
+    setSemente(novaSemente());
   };
   const pick = (x: string) => {
     limpar();
@@ -162,25 +224,41 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     setAreaId(a);
     gravar(AREA_KEY, a);
   };
-  const lista = useMemo(() => {
+  // base: o que a busca, as estrelas e "esconder estudados" deixam; os filtros de faceta vêm por cima
+  const base = useMemo(() => {
     if (!t) return [];
     const termo = q.trim().toLowerCase();
-    return t.repos.filter((e) => casa(e, filtros) && (!termo || `${e.repo} ${e.nota} ${(e.stack ?? []).join(' ')} ${e.dominio ?? ''}`.toLowerCase().includes(termo)));
-  }, [t, filtros, q]);
-  const facetas = useMemo(() => (t ? facetasDe(t.repos, t.grupo, filtros) : []), [t, filtros]);
+    return t.repos.filter(
+      (e) =>
+        (e.estrelas ?? 0) >= minEstrelas &&
+        !(semFeitos && feitosAgora.has(e.repo)) &&
+        (!termo || `${e.repo} ${e.nota} ${(e.stack ?? []).join(' ')} ${e.dominio ?? ''}`.toLowerCase().includes(termo)),
+    );
+  }, [t, q, minEstrelas, semFeitos, feitosAgora]);
+  const lista = useMemo(() => ordenar(base.filter((e) => casa(e, filtros)), ordem, semente), [base, filtros, ordem, semente]);
+  const facetas = useMemo(() => (t ? facetasDe(base, t.grupo, filtros) : []), [t, base, filtros]);
   if (!estudo) return <p className="ks-explore__vazio" aria-busy="true">Carregando a lista de estudo…</p>;
   if (!area || !t) return <p className="ks-explore__vazio">A lista de estudo ainda está vazia. Rode node scripts/catalogo-estudo.mjs para montá-la.</p>;
   const grupos = ['Temas', 'Linguagens'] as const;
   const tudo = TRILHAS.find((x) => x.grupo === 'Tudo');
   const alternar = (c: Campo, v: string) => {
     setFiltros((f) => {
-      const n = { ...f };
-      if (n[c] === v) delete n[c];
-      else n[c] = v;
+      const atual = f[c] ?? [];
+      const prox = atual.includes(v) ? atual.filter((x) => x !== v) : [...atual, v];
+      const n = { ...f, [c]: prox };
+      if (!prox.length) delete n[c];
       return n;
     });
     setMostrar(POR_PAGINA);
   };
+  const ativos = qtdFiltros(filtros) + (minEstrelas ? 1 : 0) + (semFeitos ? 1 : 0);
+  const limparFiltros = () => {
+    setFiltros({});
+    setMinEstrelas(0);
+    setSemFeitos(false);
+    setMostrar(POR_PAGINA);
+  };
+  const escolhidos = (Object.keys(filtros) as Campo[]).flatMap((c) => (filtros[c] ?? []).map((v) => [c, v] as const));
   return (
     <div className="ks-studywrap">
       <div className="ks-areas" role="tablist" aria-label="Áreas">
@@ -248,36 +326,104 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
             <Icon name="search" size={14} />
             <input value={q} onChange={(e) => { setQ(e.target.value); setMostrar(POR_PAGINA); }} placeholder="Buscar por nome, assunto ou stack" aria-label="Buscar nesta lista" />
           </span>
-          {Object.keys(filtros).length > 0 && (
-            <button type="button" className="ks-linkbtn" onClick={() => setFiltros({})}>limpar filtros</button>
-          )}
+          <div className="ks-trail__ordem">
+            <Select
+              ariaLabel="Ordem da lista"
+              value={ordem}
+              options={ORDENS}
+              onChange={(v) => {
+                setOrdem(v as Ordem);
+                gravar(ORDEM_KEY, v);
+                setMostrar(POR_PAGINA);
+              }}
+            />
+            {ordem === 'misturar' && (
+              <button type="button" className="ks-trail__icon" data-tip="Misturar de novo" aria-label="Misturar de novo" onClick={() => { setSemente(novaSemente()); setMostrar(POR_PAGINA); }}>
+                <Icon name="refresh" size={15} />
+              </button>
+            )}
+          </div>
+          <button type="button" className="ks-trail__filtros" aria-expanded={painel} aria-controls="painel-filtros" onClick={() => setPainel((v) => !v)}>
+            <Icon name="list" size={14} />
+            Filtros
+            {ativos > 0 && <span className="ks-trail__badge">{ativos}</span>}
+            <Icon name="chevronRight" size={14} className="ks-trail__chev" />
+          </button>
         </div>
-        {facetas.length > 0 && (
-          <div className="ks-facets" role="group" aria-label="Filtrar">
-            {facetas.map((f) => (
-              <div key={f.campo} className="ks-facets__row">
-                <span className="ks-facets__label">{f.titulo}</span>
-                {f.valores.filter(([v], i) => i < VISIVEIS || abertas.has(f.campo) || filtros[f.campo] === v).map(([v, n]) => {
-                  const on = filtros[f.campo] === v;
-                  return (
-                    <button key={v} type="button" className="ks-famous__cat" aria-pressed={on} onClick={() => alternar(f.campo, v)}>
-                      {f.campo === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(v)}`} className="ks-chip__icon" />}
-                      {v}
-                      <span className="ks-facets__n">{n}</span>
-                    </button>
-                  );
-                })}
-                {f.valores.length > VISIVEIS && (
-                  <button type="button" className="ks-facets__mais" aria-expanded={abertas.has(f.campo)} onClick={() => setAbertas((a) => new Set(a.has(f.campo) ? [...a].filter((x) => x !== f.campo) : [...a, f.campo]))}>
-                    {abertas.has(f.campo) ? 'menos' : `+${f.valores.length - VISIVEIS}`}
-                  </button>
-                )}
-              </div>
+        {!painel && ativos > 0 && (
+          <div className="ks-ativos" aria-label="Filtros ligados">
+            {minEstrelas > 0 && (
+              <button type="button" className="ks-ativos__chip" onClick={() => setMinEstrelas(0)} aria-label={`Tirar filtro: ${minEstrelas}+ estrelas`}>
+                <Icon name="star" size={12} />
+                {minEstrelas}+
+                <Icon name="x" size={12} />
+              </button>
+            )}
+            {semFeitos && (
+              <button type="button" className="ks-ativos__chip" onClick={() => setSemFeitos(false)} aria-label="Tirar filtro: sem os estudados">
+                sem os estudados
+                <Icon name="x" size={12} />
+              </button>
+            )}
+            {escolhidos.map(([c, v]) => (
+              <button key={c + v} type="button" className="ks-ativos__chip" onClick={() => alternar(c, v)} aria-label={`Tirar filtro: ${v}`}>
+                {c === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(v)}`} className="ks-chip__icon" />}
+                {v}
+                <Icon name="x" size={12} />
+              </button>
             ))}
+            <button type="button" className="ks-linkbtn" onClick={limparFiltros}>limpar</button>
+          </div>
+        )}
+        {painel && (
+          <div className="ks-facets" id="painel-filtros" role="group" aria-label="Filtrar">
+            <div className="ks-facets__row">
+              <span className="ks-facets__label">Estrelas</span>
+              {ESTRELAS.map((n) => (
+                <button key={n} type="button" className="ks-famous__cat" aria-pressed={minEstrelas === n} onClick={() => { setMinEstrelas(n); setMostrar(POR_PAGINA); }}>
+                  {n === 0 ? 'qualquer' : `${n}+`}
+                </button>
+              ))}
+              <label className="ks-facets__check">
+                <input type="checkbox" checked={semFeitos} onChange={(e) => setSemFeitos(e.target.checked)} />
+                esconder os que já estudei
+              </label>
+            </div>
+            {facetas.map((f) => {
+              const vs = filtros[f.campo] ?? [];
+              return (
+                <div key={f.campo} className="ks-facets__row">
+                  <span className="ks-facets__label" data-tip={`Vários: ${f.dica}`}>{f.titulo}</span>
+                  {f.valores.filter(([v], i) => i < VISIVEIS || abertas.has(f.campo) || vs.includes(v)).map(([v, n]) => {
+                    const on = vs.includes(v);
+                    return (
+                      <button key={v} type="button" className="ks-famous__cat" aria-pressed={on} disabled={!on && n === 0} onClick={() => alternar(f.campo, v)}>
+                        {f.campo === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(v)}`} className="ks-chip__icon" />}
+                        {v}
+                        <span className="ks-facets__n">{n}</span>
+                      </button>
+                    );
+                  })}
+                  {f.valores.length > VISIVEIS && (
+                    <button type="button" className="ks-facets__mais" aria-expanded={abertas.has(f.campo)} onClick={() => setAbertas((a) => new Set(a.has(f.campo) ? [...a].filter((x) => x !== f.campo) : [...a, f.campo]))}>
+                      {abertas.has(f.campo) ? 'menos' : `+${f.valores.length - VISIVEIS}`}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {ativos > 0 && (
+              <div className="ks-facets__fim">
+                <button type="button" className="ks-linkbtn" onClick={limparFiltros}>limpar filtros</button>
+              </div>
+            )}
           </div>
         )}
         {lista.length === 0 ? (
-          <p className="ks-explore__vazio">Nada com esses filtros.</p>
+          <p className="ks-explore__vazio">
+            Nada com esses filtros.{' '}
+            {ativos > 0 && <button type="button" className="ks-linkbtn" onClick={limparFiltros}>limpar filtros</button>}
+          </p>
         ) : (
           <ul className="ks-repogrid">
             {lista.slice(0, mostrar).map((r) => (

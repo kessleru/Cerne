@@ -160,6 +160,15 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     };
   }, [refName, reload, session.owner, session.repo]);
 
+  // título da aba do navegador: arquivo aberto e repositório (ajuda com várias abas e no histórico)
+  useEffect(() => {
+    const repo = `${session.owner}/${session.repo}`;
+    document.title = active && view === 'file' ? `${baseName(active)} · ${repo} · Cerne` : `${repo} · Cerne`;
+    return () => {
+      document.title = 'Cerne';
+    };
+  }, [active, view, session.owner, session.repo]);
+
   // abre o arquivo do link quando a árvore chega
   const opened = useRef(false);
   useEffect(() => {

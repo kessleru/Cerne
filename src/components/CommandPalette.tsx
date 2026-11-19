@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { fuzzyFilter, fuzzyMatch } from '../lib/fuzzy';
 import type { CodeSymbol } from '../lib/symbols';
@@ -174,8 +174,9 @@ export function CommandPalette({
           {items.map(({ group, item }, i) => {
             const head = group !== lastGroup ? ((lastGroup = group), <li key={'g' + i} className="ks-palette__group" role="presentation">{group}</li>) : null;
             return (
-              <li key={item.key} style={{ display: 'contents' }}>
+              <Fragment key={item.key}>
                 {head}
+                <li role="none" style={{ display: 'contents' }}>
                 <div
                   id={`pal-${i}`}
                   className="ks-palette__item"
@@ -198,6 +199,7 @@ export function CommandPalette({
                   )}
                 </div>
               </li>
+              </Fragment>
             );
           })}
         </ul>

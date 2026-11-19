@@ -36,6 +36,8 @@ export type Entrada = {
   /** estrelas e último envio quando a lista foi gerada (Estudar) */
   estrelas?: number;
   atualizado?: string;
+  /** nota do README dada pelo script (Estudar): pesa na ordem misturada */
+  readme?: number;
 };
 
 export type Linguagem = { nome: string; ext: string; cor: string };

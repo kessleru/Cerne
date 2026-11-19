@@ -17,7 +17,7 @@ export const FAMOSOS: Entrada[] = Object.keys(modulos)
 // famosos de saída; os de estudo entram quando estudo.json chega
 const POR_REPO = new Map<string, Entrada>(FAMOSOS.map((e) => [e.repo.toLowerCase(), e]));
 
-type Bruto = { repo: string; nota: string; lang: string; area?: Area; temas: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number };
+type Bruto = { repo: string; nota: string; lang: string; area?: Area; temas: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number; readme?: number };
 
 export type Trilha = {
   id: string;

@@ -100,7 +100,7 @@
 
 /* ---------- lista do Estudar ---------- */
 .ks-trail__count { flex: none; padding: 2px 10px; border-radius: var(--radius-full); background: var(--ctp-surface-0); color: var(--ctp-subtext-1); font: 500 12px/18px var(--font-mono); }
-.ks-trail__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.ks-trail__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .ks-trail__search { display: flex; flex: 1; align-items: center; gap: var(--space-2); min-width: min(280px, 100%); height: 36px; padding: 0 var(--space-3); border: 1px solid var(--ctp-surface-1); border-radius: var(--radius-md); background: var(--ctp-base); color: var(--ctp-meta); }
 .ks-trail__search:focus-within { border-color: color-mix(in srgb, var(--ctp-accent) 60%, transparent); }
 .ks-trail__search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--ctp-text); font: 400 13px/18px var(--font-mono); }
@@ -146,4 +146,68 @@
 @media (max-width: 759px) {
   .ks-areas { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; margin-inline: calc(var(--space-4) * -1); padding: 2px var(--space-4); scrollbar-width: none; }
   .ks-areas__item { flex: none; }
+}
+
+/* ---------- ordem e filtros do Estudar ---------- */
+.ks-trail__ordem { display: flex; align-items: center; gap: 4px; }
+.ks-trail__ordem .ks-select { height: 36px; }
+.ks-trail__icon,
+.ks-trail__filtros {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border: 1px solid var(--ctp-surface-1);
+  border-radius: var(--radius-md);
+  background: var(--ctp-base);
+  color: var(--ctp-subtext-1);
+  font: 500 13px/1 var(--font-mono);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.ks-trail__icon { width: 36px; padding: 0; }
+.ks-trail__filtros { padding: 0 var(--space-3); }
+.ks-trail__icon:hover,
+.ks-trail__filtros:hover { border-color: var(--ctp-overlay-0); color: var(--ctp-text); }
+.ks-trail__icon:focus-visible,
+.ks-trail__filtros:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: 2px; }
+.ks-trail__icon:active .ks-icon { rotate: 180deg; transition: rotate var(--dur-ui) var(--ease-out); }
+.ks-trail__filtros[aria-expanded='true'] { border-color: color-mix(in srgb, var(--ctp-accent) 45%, transparent); background: color-mix(in srgb, var(--ctp-accent) 8%, var(--ctp-base)); color: var(--ctp-text); }
+.ks-trail__chev { transition: rotate var(--dur-fast) var(--ease-out); }
+.ks-trail__filtros[aria-expanded='true'] .ks-trail__chev { rotate: 90deg; }
+.ks-trail__badge { min-width: 18px; padding: 1px 5px; border-radius: var(--radius-full); background: var(--ctp-accent); color: var(--ctp-base); font: 600 11px/16px var(--font-mono); text-align: center; }
+
+.ks-ativos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.ks-ativos__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 8px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--ctp-accent) 40%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--ctp-accent) 10%, transparent);
+  color: var(--ctp-text);
+  font: 400 12px/1 var(--font-mono);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.ks-ativos__chip:hover { background: color-mix(in srgb, var(--ctp-accent) 18%, transparent); }
+.ks-ativos__chip:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: 2px; }
+.ks-ativos .ks-linkbtn { margin-left: var(--space-1); font: 500 12px/18px var(--font-mono); }
+
+.ks-facets { animation: ks-fade var(--dur-ui) var(--ease-out); }
+.ks-facets .ks-famous__cat:disabled { opacity: 0.45; cursor: default; }
+.ks-facets__label[data-tip] { cursor: help; }
+.ks-facets__check { display: inline-flex; align-items: center; gap: 6px; margin-left: var(--space-2); color: var(--ctp-subtext-0); font: 400 12px/16px var(--font-mono); cursor: pointer; }
+.ks-facets__check input { accent-color: var(--ctp-accent); }
+.ks-facets__fim { display: flex; justify-content: flex-end; }
+.ks-facets__fim .ks-linkbtn { font: 500 12px/18px var(--font-mono); }
+:root[data-motion='reduce'] .ks-facets { animation: none; }
+@media (max-width: 559px) {
+  .ks-trail__search { flex-basis: 100%; }
+  .ks-trail__ordem { flex: 1; }
+  .ks-trail__ordem .ks-selectbox { flex: 1; }
+  .ks-facets__check { margin-left: 0; }
 }
