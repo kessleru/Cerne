@@ -32,5 +32,5 @@ export default function App() {
     return () => window.removeEventListener('popstate', on);
   }, []);
 
-  return session ? <Workspace key={`${session.owner}/${session.repo}`} session={session} onExit={exit} /> : <Entry onOpen={open} />;
+  return session ? <Workspace key={`${session.owner}/${session.repo}`} session={session} onExit={exit} onOpen={open} /> : <Entry onOpen={open} />;
 }

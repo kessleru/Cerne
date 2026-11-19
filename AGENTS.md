@@ -14,13 +14,13 @@ Visualizador de repositórios do GitHub. Site estático (Vite, React, TypeScript
 ## Mapa
 | Pasta | O que tem |
 |---|---|
-| `src/components/` | Telas e partes da interface (`Workspace`, `Entry`, `Account` (entrar com token, perfil e guia ilustrado), `Avatar`, `Preferences`, `Tree`, `Tabs`, `CommandPalette`, `SnippetDialog`, `CommitLoader`, `Tooltip`, `Select`) |
+| `src/components/` | Telas e partes da interface (`Workspace`, `Entry`, `Account` (entrar com token, perfil do GitHub com repositórios e guia ilustrado), `Avatar`, `ThemeToggle`, `Preferences`, `Tree`, `Tabs`, `CommandPalette`, `SnippetDialog`, `CommitLoader`, `Tooltip`, `Select`) |
 | `src/code/` | `CodeView` (só as linhas visíveis), worker do Shiki |
 | `src/data/` | Contrato `types.ts` (`RepoSource`), `source.ts` (escolhe a fonte), `github/` (API, cota, erros), `cache/` (IndexedDB, separado por token) |
 | `src/mock/` | Repositório falso, usado só para `kessleru/exemplo` |
-| `src/kessleru/` | `tokens.css` e `bundle.css` copiados do cofre (não edite); `extensoes.css`, `extensoes-ui.css` e `conta.css` (o que o Cerne acrescenta) |
+| `src/kessleru/` | `tokens.css` e `bundle.css` copiados do cofre (não edite); `extensoes.css`, `extensoes-ui.css`, `conta.css` e `home.css` (o que o Cerne acrescenta) |
 | `src/state/` (inclui `account.ts`: conta e perfil), `src/lib/`, `src/anim/`, `src/viewers/`, `src/icons/` | Preferências e token; funções puras (rotas, busca, diff); animações; visualizadores; ícones |
-| `public/` | `404.html` e `restaurar-rota.js` (rotas no Pages), `sw.js` (offline), manifesto e ícones |
+| `public/` | `tema-inicial.js` (claro/escuro antes do app), `404.html` e `restaurar-rota.js` (rotas no Pages), `sw.js` (offline), manifesto e ícones |
 
 ## Regras fixas
 - **Visual:** só tokens e classes `ks-*` e `key` do Kessleru; sem hex no código-fonte (exceção: SVG em `public/`), sem emoji, sem `transition: all`, `ease-in` nem `scale(0)`. Botões são `key` (ver `Knowledge/07 • Design System/Kessleru/Componentes/Kessleru - Button.md`).

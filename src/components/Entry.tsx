@@ -6,12 +6,14 @@ import { parseRepoLink, type RepoLink } from '../lib/route';
 import { source } from '../data/source';
 import { Account } from './Account';
 import { AccountButton } from './Avatar';
+import { ThemeToggle } from './ThemeToggle';
 import { Icon, type IconName } from './Icon';
 import { Preferences } from './Preferences';
 import { Kbd, Meter, Presence, Rings, ToastHost } from './parts';
 import { Tooltip } from './Tooltip';
 import type { Quota } from '../data/types';
-import { useConta } from '../state/account';
+import { useConta, useRepos } from '../state/account';
+import { relativo } from '../lib/tempo';
 
 const RECENT_KEY = 'cerne:recentes';
 
@@ -40,7 +42,7 @@ const introPlayed = () => {
   }
 };
 
-type Item = { id: string; label: string; value: string; icon: IconName; hint?: string };
+type Item = { id: string; label: string; value: string; icon: IconName; hint?: string; tag?: string };
 
 const EXAMPLES: Item[] = [
   { id: 'ex1', label: 'kessleru/exemplo', value: 'github.com/kessleru/exemplo', icon: 'book', hint: 'repositório de demonstração' },
@@ -65,15 +67,23 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const [prefs, setPrefs] = useState<{ section?: string } | null>(null);
   const [account, setAccount] = useState<{ x: number; y: number } | null | false>(false);
   const [quota, setQuota] = useState<Quota>(source.quota());
+  const conta = useConta();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const conta = useConta();
 
   const recents = useMemo(() => loadRecents(), []);
-  const items: Item[] = useMemo(
-    () => (recents.length ? recents.map((r, i) => ({ id: 'r' + i, label: r, value: r, icon: 'history' as const })) : EXAMPLES),
-    [recents],
+  const repos = useRepos(conta.status === 'ok');
+  const recentItems: Item[] = useMemo(() => recents.map((r, i) => ({ id: 'r' + i, label: r, value: r, icon: 'history' as const })), [recents]);
+  const repoItems: Item[] = useMemo(
+    () =>
+      conta.status === 'ok'
+        ? repos.lista.slice(0, 5).map((r) => ({ id: 'g' + r.nome, label: r.nome, value: r.nome, icon: r.privado ? ('lock' as const) : ('book' as const), hint: r.atualizado ? relativo(r.atualizado) : undefined, tag: r.privado ? 'privado' : undefined }))
+        : [],
+    [conta.status, repos.lista],
   );
+  // ordem dos atalhos Alt+1..9: recentes, seus repositórios, exemplos
+  const items: Item[] = useMemo(() => [...recentItems, ...repoItems, ...(recentItems.length ? [] : EXAMPLES)], [recentItems, repoItems]);
+  const numero = (id: string) => items.findIndex((x) => x.id === id) + 1;
 
   const link = useMemo(() => (value.trim() ? parseRepoLink(value) : null), [value]);
   const invalid = touched && value.trim() !== '' && !link;
@@ -157,90 +167,147 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
 
   const read = link ? reading(link) : null;
 
+  const openAccount = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (!e || e.detail === 0) return setAccount(null);
+    const r = e.currentTarget.getBoundingClientRect();
+    setAccount({ x: r.left + r.width / 2, y: r.bottom });
+  };
+
+  const row = (it: Item) => {
+    const n = numero(it.id);
+    return (
+      <button key={it.id} type="button" className="ks-entry__item" onClick={() => submit(it.value)}>
+        <Icon name={it.icon} />
+        <span className="ks-entry__itemname">{it.label}</span>
+        {it.tag && <span className="ks-home__tag">{it.tag}</span>}
+        {it.hint && <span className="ks-entry__itemhint">{it.hint}</span>}
+        {n > 0 && n < 10 && <Kbd>{n}</Kbd>}
+      </button>
+    );
+  };
+
+  const cards: { id: string; title: string; items: Item[]; action?: React.ReactNode; empty?: React.ReactNode }[] = [];
+  if (recentItems.length) cards.push({ id: 'recentes', title: 'Recentes', items: recentItems });
+  if (conta.status === 'ok')
+    cards.push({
+      id: 'seus',
+      title: 'Seus repositórios',
+      items: repoItems,
+      action: <button type="button" className="ks-home__more" onClick={(e) => openAccount(e)}>Ver todos <Icon name="arrowRight" size={12} /></button>,
+      empty: repos.status === 'carregando' || repos.status === 'ocioso' ? <span className="ks-home__loading">Carregando…</span> : repos.status === 'erro' ? <span className="ks-home__loading">Não deu para ler agora.</span> : <span className="ks-home__loading">Nenhum repositório neste token.</span>,
+    });
+  if (!recentItems.length) cards.push({ id: 'exemplos', title: 'Experimente', items: EXAMPLES });
+
   return (
-    <main className={`ks-entry${intro && !skipped ? ' is-intro' : ''}`}>
-      <Rings className="ks-entry__bg" />
-      <div className="ks-entry__top">
-        <button type="button" className="ks-icon-btn" aria-label="Preferências" data-tip="Preferências" onClick={() => setPrefs({})}><Icon name="settings" /></button>
-        <AccountButton onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setAccount(e.detail === 0 ? null : { x: r.left + r.width / 2, y: r.bottom }); }} />
-      </div>
-      <div className="ks-entry__col">
-        <div className="ks-entry__brand">
+    <main className={`ks-entry ks-home${intro && !skipped ? ' is-intro' : ''}`}>
+      <header className="ks-home__nav">
+        <span className="ks-home__brand">
           <Rings className="ks-entry__logo" />
           <span>cerne</span>
+        </span>
+        <div className="ks-home__navright">
+          <ThemeToggle />
+          <button type="button" className="ks-icon-btn" aria-label="Preferências" data-tip="Preferências" onClick={() => setPrefs({})}><Icon name="settings" /></button>
+          <AccountButton onClick={openAccount} />
         </div>
+      </header>
 
-        <form
-          className="ks-entry__box ks-entry__field"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setTouched(true);
-            submit(value);
-          }}
-        >
-          <Icon name="search" />
-          <input
-            ref={inputRef}
-            className="ks-entry__input"
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setTouched(false);
+      <div className="ks-home__body">
+        <section className="ks-home__hero" aria-labelledby="home-titulo">
+          <p className="ks-home__eyebrow"><span className="ks-home__dot" aria-hidden="true" />Visualizador de repositórios do GitHub</p>
+          <h1 id="home-titulo" className="ks-home__title">Leia qualquer repositório{' '}<br />como no seu editor.</h1>
+          <p className="ks-home__lead">Cole um link ou escreva dono/repo. Árvore, abas, busca, histórico e diferenças, direto no navegador e sem instalar nada.</p>
+
+          <form
+            className="ks-entry__box ks-entry__field ks-home__field"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setTouched(true);
+              submit(value);
             }}
-            onKeyDown={onFieldKey}
-            onBlur={() => setTouched(true)}
-            placeholder="dono/repo ou link do GitHub"
-            aria-label="Link ou nome do repositório"
-            aria-describedby="entrada-leitura"
-            aria-invalid={invalid || undefined}
-            autoComplete="off"
-            spellCheck={false}
-            autoFocus
-          />
-          <button type="submit" className="ks-kbd ks-entry__enter" aria-label="Abrir repositório">Enter</button>
-        </form>
-
-        <p id="entrada-leitura" className={`ks-entry__read${invalid ? ' is-error' : ''}`} aria-live="polite">
-          {invalid ? (
-            <>
-              <Icon name="alert" /> Não entendi esse link. Tente github.com/dono/repo ou dono/repo.
-            </>
-          ) : read ? (
-            read.map((r) => (
-              <span key={r.k} className="ks-entry__pill">
-                <span className="ks-entry__pillk">{r.k}</span> {r.v}
-              </span>
-            ))
-          ) : (
-            <span className="ks-entry__hint">Cole um link ou escreva dono/repo.</span>
-          )}
-        </p>
-
-        <div className="ks-entry__list" ref={listRef} onKeyDown={onListKey} role="group" aria-label={recents.length ? 'Repositórios recentes' : 'Exemplos'}>
-          <p className="ks-entry__listhead">{recents.length ? 'Recentes' : 'Exemplos'}</p>
-          {items.map((it, i) => (
-            <button key={it.id} type="button" className="ks-entry__item" onClick={() => submit(it.value)}>
-              <Icon name={it.icon} />
-              <span className="ks-entry__itemname">{it.label}</span>
-              {it.hint && <span className="ks-entry__itemhint">{it.hint}</span>}
-              <Kbd>{i + 1}</Kbd>
+          >
+            <Icon name="search" />
+            <input
+              ref={inputRef}
+              className="ks-entry__input"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setTouched(false);
+              }}
+              onKeyDown={onFieldKey}
+              onBlur={() => setTouched(true)}
+              placeholder="github.com/dono/repo ou dono/repo"
+              aria-label="Link ou nome do repositório"
+              aria-describedby="entrada-leitura"
+              aria-invalid={invalid || undefined}
+              autoComplete="off"
+              spellCheck={false}
+              autoFocus
+            />
+            <button type="submit" className="key key--accent ks-home__go" aria-label="Abrir repositório" disabled={!value.trim()}>
+              Abrir <Icon name="arrowRight" size={14} />
             </button>
+          </form>
+
+          <p id="entrada-leitura" className={`ks-entry__read ks-home__read${invalid ? ' is-error' : ''}`} aria-live="polite">
+            {invalid ? (
+              <>
+                <Icon name="alert" /> Não entendi esse link. Tente github.com/dono/repo ou dono/repo.
+              </>
+            ) : read ? (
+              read.map((r) => (
+                <span key={r.k} className="ks-entry__pill">
+                  <span className="ks-entry__pillk">{r.k}</span> {r.v}
+                </span>
+              ))
+            ) : (
+              <span className="ks-entry__hint">Funciona com links de repositório, ramo, pasta, arquivo e linhas (#L10-L20).</span>
+            )}
+          </p>
+        </section>
+
+        <div className={`ks-home__cards${cards.length > 1 ? ' is-two' : ''}`} ref={listRef} onKeyDown={onListKey}>
+          {cards.map((c) => (
+            <section key={c.id} className="ks-home__card" aria-labelledby={`home-${c.id}`}>
+              <div className="ks-home__cardhead">
+                <h2 id={`home-${c.id}`}>{c.title}</h2>
+                {c.action}
+              </div>
+              <div className="ks-home__cardlist" role="group" aria-labelledby={`home-${c.id}`}>
+                {c.items.length ? c.items.map(row) : c.empty}
+              </div>
+            </section>
           ))}
         </div>
+
+        {conta.status === 'anonimo' && (
+          <button type="button" className="ks-home__cta" onClick={(e) => openAccount(e)}>
+            <span className="ks-home__ctaicon"><Icon name="key" size={16} /></span>
+            <span>
+              <strong>Entre com um token do GitHub</strong>
+              <span>Repositórios privados e 5 000 chamadas por hora em vez de {quota.limit}. Leva 1 minuto, com guia passo a passo.</span>
+            </span>
+            <Icon name="arrowRight" size={16} />
+          </button>
+        )}
+
+        <ul className="ks-home__features" aria-label="O que o Cerne faz">
+          <Feature icon="panelLeft" title="Árvore e abas">Pastas, ícones por tipo e várias abas, como no VS Code.</Feature>
+          <Feature icon="search" title="Busca em tudo">Arquivos, comandos e linhas numa só paleta: Ctrl K.</Feature>
+          <Feature icon="history" title="Histórico e diferenças">Commits do arquivo e o que mudou, lado a lado.</Feature>
+          <Feature icon="image" title="Imagem do trecho">Exporte linhas selecionadas como imagem com o seu tema.</Feature>
+        </ul>
       </div>
 
-      <footer className="ks-entry__footer">
+      <footer className="ks-entry__footer ks-home__footer">
         <div>
           <Meter quota={quota} />
-          {conta.status === 'anonimo' ? (
-            <button type="button" className="ks-entry__tokenhint" onClick={() => setAccount(null)}>
-              {quota.limit} chamadas por hora sem token. <b>Entrar para ter 5 000</b>
-            </button>
-          ) : conta.status === 'invalido' ? (
+          {conta.status === 'invalido' && (
             <button type="button" className="ks-entry__tokenhint" onClick={() => setAccount(null)}>
               <Icon name="alert" size={14} /> O token parou de funcionar. <b>Trocar</b>
             </button>
-          ) : null}
+          )}
         </div>
         <div className="ks-entry__keys">
           <span><Kbd>Ctrl</Kbd><Kbd>K</Kbd> campo</span>
@@ -249,9 +316,19 @@ export function Entry({ onOpen }: { onOpen: (l: RepoLink) => void }) {
       </footer>
 
       <Presence open={!!prefs}>{prefs && <Preferences section={prefs.section} onClose={() => setPrefs(null)} onAccount={() => { setPrefs(null); setAccount(null); }} />}</Presence>
-      <Presence open={account !== false}>{account !== false && <Account origin={account} onClose={() => setAccount(false)} />}</Presence>
+      <Presence open={account !== false}>{account !== false && <Account origin={account} onClose={() => setAccount(false)} onOpenRepo={(slug) => submit(slug)} />}</Presence>
       <ToastHost />
       <Tooltip />
     </main>
+  );
+}
+
+function Feature({ icon, title, children }: { icon: IconName; title: string; children: React.ReactNode }) {
+  return (
+    <li className="ks-home__feature">
+      <span className="ks-home__featicon"><Icon name={icon} size={16} /></span>
+      <strong>{title}</strong>
+      <span>{children}</span>
+    </li>
   );
 }

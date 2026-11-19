@@ -3,15 +3,15 @@ import type { ReactNode } from 'react';
 import { withThemeTransition } from '../anim/motion';
 import { PACK_LABELS } from '../icons/packs';
 import {
-  ACCENTS, DEFAULT_PREFS, FONT_LABELS, SCOPE_LABELS, THEMES, prefsStore, usePrefs,
-  type AccentId, type Density, type EditorScope, type Guides, type FontId, type IconPack, type Prefs, type ThemeId,
+  ACCENTS, APPEARANCE_LABELS, DARK_THEMES, DEFAULT_PREFS, FONT_LABELS, SCOPE_LABELS, effectiveTheme, prefsStore, reducedMotion, usePrefs,
+  type AccentId, type Appearance, type Density, type EditorScope, type Guides, type FontId, type IconPack, type Prefs, type ThemeId,
 } from '../state/prefs';
 import { clearToken } from '../state/token';
 import { sair, useConta } from '../state/account';
 import { Avatar } from './Avatar';
 import { importThemeJson, importedStore, removeImportedTheme, useEditorThemes } from '../state/themes';
 import { source } from '../data/source';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { Select } from './Select';
 import { ThemeCard } from './ThemeCard';
 import { trapTab, toast, useOrigin } from './parts';
@@ -33,10 +33,19 @@ function Setting({ label, hint, children, stacked = false }: { label: string; hi
   );
 }
 
+const SECOES: { id: string; label: string; icon: IconName }[] = [
+  { id: 'aparencia', label: 'Aparência', icon: 'sun' },
+  { id: 'codigo', label: 'Código', icon: 'code' },
+  { id: 'arvore', label: 'Árvore', icon: 'panelLeft' },
+  { id: 'acessibilidade', label: 'Acessibilidade', icon: 'eye' },
+  { id: 'token', label: 'Conta', icon: 'user' },
+  { id: 'dados', label: 'Dados', icon: 'file' },
+];
+
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
     <section className="ks-prefs__sec" id={`pf-${id}`} aria-labelledby={`pf-${id}-t`}>
-      <h3 id={`pf-${id}-t`} className="ks-prefs__section">{title}</h3>
+      <h3 id={`pf-${id}-t`} className="ks-prefs__section" tabIndex={-1}>{title}</h3>
       {children}
     </section>
   );
@@ -81,6 +90,28 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
 
   const conta = useConta();
   const perfil = conta.status === 'anonimo' ? null : conta.conta;
+
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [atual, setAtual] = useState(section ?? 'aparencia');
+  const irPara = (id: string) => {
+    const el = bodyRef.current?.querySelector<HTMLElement>(`#pf-${id}`);
+    if (!el || !bodyRef.current) return;
+    bodyRef.current.scrollTo({ top: el.offsetTop - bodyRef.current.offsetTop, behavior: reducedMotion(prefsStore.get()) ? 'auto' : 'smooth' });
+    setAtual(id);
+    el.querySelector<HTMLElement>('h3')?.focus({ preventScroll: true });
+  };
+  // seção atual: a última cujo título já passou do topo do painel
+  const onBodyScroll = () => {
+    const b = bodyRef.current;
+    if (!b) return;
+    if (b.scrollTop + b.clientHeight >= b.scrollHeight - 4) return setAtual(SECOES[SECOES.length - 1]!.id);
+    let id = SECOES[0]!.id;
+    for (const x of SECOES) {
+      const el = b.querySelector<HTMLElement>(`#pf-${x.id}`);
+      if (el && el.offsetTop - b.offsetTop - b.scrollTop <= 48) id = x.id;
+    }
+    setAtual(id);
+  };
 
   useEffect(() => {
     if (section) panel.current?.querySelector(`#pf-${section}`)?.scrollIntoView({ block: 'start' });
@@ -159,12 +190,31 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
             <Icon name="x" />
           </button>
         </header>
-        <div className="ks-prefs__body">
+        <div className="ks-prefs__main">
+        <nav className="ks-prefs__nav" aria-label="Seções das preferências">
+          {SECOES.map((x) => (
+            <button key={x.id} type="button" aria-current={atual === x.id ? 'true' : undefined} onClick={() => irPara(x.id)}>
+              <Icon name={x.icon} size={16} />
+              {x.label}
+            </button>
+          ))}
+        </nav>
+        <div className="ks-prefs__body" ref={bodyRef} onScroll={onBodyScroll}>
           <Section id="aparencia" title="Aparência">
-            <Setting label="Sabor da interface" hint={covering ? 'O tema do editor está cobrindo a interface.' : 'Os quatro sabores do Catppuccin. Vale para tudo por padrão.'}>
+            <Setting label="Claro ou escuro" hint={covering ? 'O tema do editor está cobrindo a interface.' : p.appearance === 'system' ? `Segue o sistema do seu aparelho (agora: ${effectiveTheme(p) === 'latte' ? 'claro' : 'escuro'}).` : 'Fixo, não importa o sistema.'}>
+              <div className="ks-segmented ks-appearance" role="group" aria-label="Claro ou escuro">
+                {(['system', 'light', 'dark'] as Appearance[]).map((a) => (
+                  <button key={a} type="button" aria-pressed={p.appearance === a} disabled={covering} onClick={() => withThemeTransition(() => set({ appearance: a }))}>
+                    <Icon name={a === 'system' ? 'monitor' : a === 'light' ? 'sun' : 'moon'} size={14} />
+                    {APPEARANCE_LABELS[a]}
+                  </button>
+                ))}
+              </div>
+            </Setting>
+            <Setting label="Sabor do escuro" hint={p.appearance === 'light' ? 'Vale quando o tema estiver escuro. O claro é o Latte.' : 'Os três sabores escuros do Catppuccin. O claro é o Latte.'}>
               <div className="ks-theme">
-                <div className="ks-theme__themes" role="group" aria-label="Sabor da interface">
-                  {THEMES.map((t) => (
+                <div className="ks-theme__themes is-three" role="group" aria-label="Sabor do escuro">
+                  {DARK_THEMES.map((t) => (
                     <button key={t.id} type="button" className="key" aria-pressed={p.theme === t.id} disabled={covering} onClick={() => withThemeTransition(() => set({ theme: t.id as ThemeId }))}>
                       {t.label}
                     </button>
@@ -271,6 +321,7 @@ export function Preferences({ onClose, origin, section, onAccount }: { onClose: 
               <button type="button" className="key" onClick={clearAll}>Apagar</button>
             </Setting>
           </Section>
+        </div>
         </div>
       </div>
     </div>

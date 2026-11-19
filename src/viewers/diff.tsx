@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Commit } from '../data/types';
 import { Icon } from '../components/Icon';
 import { diffLines, stats, toHunks, type DiffLine } from '../lib/diff';
+import { relativo, rotuloDoDia } from '../lib/tempo';
 
 type Mode = 'unified' | 'split';
 
@@ -90,28 +91,60 @@ export function DiffView({ before, after, commit, path }: { before: string; afte
 }
 
 // ---------- CommitList: histórico do arquivo ----------
-function rel(date: string): string {
-  const d = new Date(date);
-  const days = Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
-  if (days < 1) return 'hoje';
-  if (days < 30) return `há ${days} dias`;
-  if (days < 365) return `há ${Math.floor(days / 30)} meses`;
-  return d.toLocaleDateString('pt-BR');
+
+/** Iniciais do autor para o selo redondo. */
+function iniciaisAutor(nome: string): string {
+  const partes = nome.trim().split(/[\s._-]+/).filter(Boolean);
+  return ((partes[0]?.[0] ?? '?') + (partes.length > 1 ? partes[partes.length - 1]![0] : '')).toUpperCase();
+}
+
+/** Cor do selo pelo nome: sempre a mesma para a mesma pessoa. */
+const CORES_AUTOR = ['blue', 'mauve', 'peach', 'teal', 'pink', 'yellow', 'sapphire', 'green', 'lavender', 'maroon'];
+function corAutor(nome: string): string {
+  let h = 0;
+  for (const ch of nome) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return CORES_AUTOR[h % CORES_AUTOR.length]!;
 }
 
 export function CommitList({ commits, active, path, onPick }: { commits: Commit[]; active: string | null; path: string | null; onPick: (c: Commit) => void }) {
+  // agrupa por dia, mantendo a ordem (do mais novo ao mais antigo)
+  const grupos: { dia: string; itens: Commit[] }[] = [];
+  for (const c of commits) {
+    const dia = rotuloDoDia(c.date);
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.dia === dia) ultimo.itens.push(c);
+    else grupos.push({ dia, itens: [c] });
+  }
   return (
-    <ol className="ks-commits" aria-label={path ? `Histórico de ${path}` : 'Histórico do repositório'}>
-      {commits.map((c) => (
-        <li key={c.sha}>
-          <button type="button" className="ks-commits__item" aria-current={active === c.sha ? 'true' : undefined} onClick={() => onPick(c)}>
-            <span className="ks-commits__msg">{c.message}</span>
-            <span className="ks-commits__meta">
-              {c.author} · <time dateTime={c.date}>{rel(c.date)}</time> · <code>{c.sha.slice(0, 7)}</code>
-            </span>
-          </button>
-        </li>
+    <div className="ks-commits ks-timeline" aria-label={path ? `Histórico de ${path}` : 'Histórico do repositório'}>
+      <p className="ks-timeline__head">
+        <Icon name="history" size={14} />
+        {path ? <>Histórico de <code>{path}</code></> : 'Histórico do repositório'}
+        <span className="ks-timeline__count">{commits.length} {commits.length === 1 ? 'commit' : 'commits'}</span>
+        <span className="ks-timeline__tip">Clique num commit para ver o que mudou</span>
+      </p>
+      {grupos.map((g) => (
+        <section key={g.dia + g.itens[0]!.sha} className="ks-timeline__day">
+          <h3 className="ks-timeline__date"><Icon name="commit" size={14} />{g.dia}</h3>
+          <ol className="ks-timeline__list">
+            {g.itens.map((c) => (
+              <li key={c.sha}>
+                <button type="button" className="ks-commits__item ks-timeline__item" aria-current={active === c.sha ? 'true' : undefined} onClick={() => onPick(c)}>
+                  <span className="ks-timeline__avatar" style={{ background: `color-mix(in srgb, var(--ctp-${corAutor(c.author)}) 22%, var(--ctp-mantle))`, color: `var(--ctp-${corAutor(c.author)})` }} aria-hidden="true">{iniciaisAutor(c.author)}</span>
+                  <span className="ks-timeline__main">
+                    <span className="ks-commits__msg">{c.message.split('\n')[0]}</span>
+                    <span className="ks-commits__meta">
+                      <b>{c.author}</b> · <time dateTime={c.date} title={new Date(c.date).toLocaleString('pt-BR')}>{relativo(c.date)}</time>
+                    </span>
+                  </span>
+                  <code className="ks-timeline__sha">{c.sha.slice(0, 7)}</code>
+                  <Icon name="chevronRight" size={14} className="ks-timeline__go" />
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
       ))}
-    </ol>
+    </div>
   );
 }

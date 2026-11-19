@@ -1,7 +1,7 @@
 // Conta do GitHub: o perfil de quem entrou com um token. O perfil não é segredo; fica no mesmo lugar
 // que o token (sessão ou navegador) para a foto aparecer na hora, e é conferido de novo ao abrir o app.
 import { useSyncExternalStore } from 'react';
-import { ErroConta, lerConta, type Conta } from '../data/github/conta';
+import { ErroConta, lerConta, lerRepos, type Conta, type RepoDaConta } from '../data/github/conta';
 import { clearToken, getToken, saveToken, subscribeToken } from './token';
 
 const KEY = 'cerne:conta';
@@ -91,12 +91,47 @@ export async function entrar(token: string, lembrar: boolean): Promise<Conta> {
   iniciar();
   const conta = await lerConta(token.trim());
   saveToken(token.trim(), lembrar);
+  setRepos({ status: 'ocioso', lista: [] });
   guardar(conta, lembrar);
   set({ status: 'ok', conta, lembrado: lembrar });
   return conta;
 }
 
+// ---------- repositórios de quem entrou (só em memória, relidos a cada visita) ----------
+export type EstadoRepos = { status: 'ocioso' | 'carregando' | 'ok' | 'erro'; lista: RepoDaConta[]; erro?: string };
+let repos: EstadoRepos = { status: 'ocioso', lista: [] };
+const ouvintesRepos = new Set<() => void>();
+const setRepos = (r: EstadoRepos) => {
+  repos = r;
+  ouvintesRepos.forEach((fn) => fn());
+};
+
+export function carregarRepos(forcar = false) {
+  const token = getToken().value;
+  if (!token) return setRepos({ status: 'ocioso', lista: [] });
+  if (!forcar && (repos.status === 'carregando' || repos.status === 'ok')) return;
+  setRepos({ status: 'carregando', lista: repos.lista });
+  lerRepos(token).then(
+    (lista) => getToken().value === token && setRepos({ status: 'ok', lista }),
+    (e: unknown) => getToken().value === token && setRepos({ status: 'erro', lista: [], erro: e instanceof Error ? e.message : 'Erro ao ler os repositórios.' }),
+  );
+}
+
+/** Lista dos repositórios da conta; carrega na primeira vez que alguém pede. */
+export function useRepos(ativo = true): EstadoRepos {
+  const r = useSyncExternalStore(
+    (fn) => {
+      ouvintesRepos.add(fn);
+      return () => ouvintesRepos.delete(fn);
+    },
+    () => repos,
+  );
+  if (ativo && r.status === 'ocioso' && getToken().value) queueMicrotask(() => carregarRepos());
+  return r;
+}
+
 export function sair() {
+  setRepos({ status: 'ocioso', lista: [] });
   guardar(null, false);
   clearToken();
   set({ status: 'anonimo' });

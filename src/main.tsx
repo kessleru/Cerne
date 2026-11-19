@@ -11,6 +11,7 @@ import './kessleru/bundle.css';
 import './kessleru/extensoes.css';
 import './kessleru/extensoes-ui.css';
 import './kessleru/conta.css';
+import './kessleru/home.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

@@ -14,6 +14,29 @@ export type Conta = {
   escopos: string[] | null;
   /** chamadas por hora que o token libera */
   limite: number | null;
+  // dados do perfil público (podem faltar em perfis guardados por versões antigas)
+  bio?: string | null;
+  empresa?: string | null;
+  local?: string | null;
+  site?: string | null;
+  seguidores?: number;
+  seguindo?: number;
+  reposPublicos?: number;
+  reposPrivados?: number;
+  /** ISO 8601: quando a conta foi criada */
+  desde?: string;
+};
+
+export type RepoDaConta = {
+  /** dono/nome */
+  nome: string;
+  privado: boolean;
+  fork: boolean;
+  descricao: string | null;
+  linguagem: string | null;
+  estrelas: number;
+  /** ISO 8601 do último push */
+  atualizado: string;
 };
 
 /** Pelo começo do texto: github_pat_ é fine-grained, ghp_ é clássico. Só para orientar quem cola. */
@@ -38,7 +61,9 @@ export async function lerConta(token: string): Promise<Conta> {
   if (res.status === 401) throw new ErroConta('O GitHub não aceitou esse token. Ele pode estar errado, expirado ou ter sido apagado. Copie de novo ou gere outro.');
   if (res.status === 403) throw new ErroConta('O GitHub recusou o token agora (limite de chamadas ou bloqueio da organização). Tente de novo em alguns minutos.');
   if (!res.ok) throw new ErroConta(`O GitHub respondeu com erro ${res.status}. Tente de novo em instantes.`);
-  const j = (await res.json()) as { login?: unknown; name?: unknown; avatar_url?: unknown; html_url?: unknown };
+  const j = (await res.json()) as Record<string, unknown>;
+  const txt = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
   if (typeof j.login !== 'string') throw new ErroConta('Resposta inesperada do GitHub.');
   const escopos = res.headers.get('x-oauth-scopes');
   const limite = Number(res.headers.get('x-ratelimit-limit'));
@@ -50,5 +75,49 @@ export async function lerConta(token: string): Promise<Conta> {
     tipo: tipoDoToken(token) ?? 'outro',
     escopos: escopos === null ? null : escopos.split(',').map((s) => s.trim()).filter(Boolean),
     limite: Number.isFinite(limite) && limite > 0 ? limite : null,
+    bio: txt(j.bio),
+    empresa: txt(j.company),
+    local: txt(j.location),
+    site: siteSeguro(txt(j.blog)),
+    seguidores: num(j.followers),
+    seguindo: num(j.following),
+    reposPublicos: num(j.public_repos),
+    reposPrivados: num(j.total_private_repos),
+    desde: txt(j.created_at) ?? undefined,
   };
+}
+
+/** Só links http(s); o campo "blog" do GitHub aceita qualquer texto. */
+function siteSeguro(v: string | null): string | null {
+  if (!v) return null;
+  const url = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Repositórios de quem entrou (seus, de organizações e onde colabora), do push mais recente ao mais antigo. */
+export async function lerRepos(token: string): Promise<RepoDaConta[]> {
+  let res: Response;
+  try {
+    res = await fetch(`${API}/user/repos?sort=pushed&per_page=100&affiliation=owner,collaborator,organization_member`, { headers: { Accept: ACEITA_JSON, Authorization: `Bearer ${token}` } });
+  } catch {
+    throw new ErroConta('Sem conexão com o GitHub.');
+  }
+  if (!res.ok) throw new ErroConta(res.status === 401 ? 'O token parou de funcionar.' : `O GitHub respondeu com erro ${res.status}.`);
+  const lista = (await res.json()) as Record<string, unknown>[];
+  return lista
+    .filter((r) => typeof r.full_name === 'string')
+    .map((r) => ({
+      nome: r.full_name as string,
+      privado: r.private === true,
+      fork: r.fork === true,
+      descricao: typeof r.description === 'string' && r.description.trim() ? r.description : null,
+      linguagem: typeof r.language === 'string' ? r.language : null,
+      estrelas: typeof r.stargazers_count === 'number' ? r.stargazers_count : 0,
+      atualizado: typeof r.pushed_at === 'string' ? r.pushed_at : typeof r.updated_at === 'string' ? r.updated_at : '',
+    }));
 }

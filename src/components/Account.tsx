@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { tipoDoToken } from '../data/github/conta';
-import { entrar, sair, useConta } from '../state/account';
+import { tipoDoToken, type RepoDaConta } from '../data/github/conta';
+import { fuzzyMatch } from '../lib/fuzzy';
+import { milhar, relativo } from '../lib/tempo';
+import { carregarRepos, entrar, sair, useConta, useRepos } from '../state/account';
 import { Avatar } from './Avatar';
 import { Icon, type IconName } from './Icon';
 import { toast, trapTab, useOrigin } from './parts';
@@ -16,10 +18,7 @@ const URL_FINE = `https://github.com/settings/personal-access-tokens/new?name=Ce
 const URL_CLASSIC = `https://github.com/settings/tokens/new?description=Cerne&scopes=repo`;
 const URL_TOKENS = 'https://github.com/settings/personal-access-tokens';
 
-/** 5000 vira "5 000", como no resto do Cerne. */
-const milhar = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-
-export function Account({ onClose, origin }: { onClose: () => void; origin?: { x: number; y: number } | null }) {
+export function Account({ onClose, origin, onOpenRepo }: { onClose: () => void; origin?: { x: number; y: number } | null; onOpenRepo?: (slug: string) => void }) {
   const estado = useConta();
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -49,14 +48,19 @@ export function Account({ onClose, origin }: { onClose: () => void; origin?: { x
         }}
       >
         <header className="ks-prefs__head">
-          <h2 id="conta-titulo">{logado ? 'Sua conta' : 'Entrar no GitHub'}</h2>
+          <h2 id="conta-titulo">{logado ? 'Seu perfil no GitHub' : 'Entrar no GitHub'}</h2>
           <button ref={closeRef} type="button" className="ks-icon-btn" aria-label="Fechar" onClick={onClose}>
             <Icon name="x" />
           </button>
         </header>
         <div className="ks-account__body">
           {logado && estado.status === 'ok' ? (
-            <Perfil estado={estado} onTrocar={() => setTrocando(true)} onSair={() => { sair(); toast('Você saiu. O token foi apagado deste navegador.'); }} />
+            <Perfil
+              estado={estado}
+              onTrocar={() => setTrocando(true)}
+              onSair={() => { sair(); toast('Você saiu. O token foi apagado deste navegador.'); }}
+              onOpenRepo={onOpenRepo ? (slug) => { onClose(); onOpenRepo(slug); } : undefined}
+            />
           ) : (
             <Login
               aviso={estado.status === 'invalido' ? estado.erro : null}
@@ -72,39 +76,136 @@ export function Account({ onClose, origin }: { onClose: () => void; origin?: { x
 }
 
 // ---------- Perfil ----------
-function Perfil({ estado, onTrocar, onSair }: { estado: Extract<ReturnType<typeof useConta>, { status: 'ok' }>; onTrocar: () => void; onSair: () => void }) {
+type EstadoOk = Extract<ReturnType<typeof useConta>, { status: 'ok' }>;
+
+function Perfil({ estado, onTrocar, onSair, onOpenRepo }: { estado: EstadoOk; onTrocar: () => void; onSair: () => void; onOpenRepo?: (slug: string) => void }) {
   const c = estado.conta;
   const tipo = c.tipo === 'fine-grained' ? 'Fine-grained' : c.tipo === 'clássico' ? 'Clássico' : 'Outro';
+  const repos = c.reposPublicos !== undefined ? c.reposPublicos + (c.reposPrivados ?? 0) : undefined;
+  const site = c.site ? c.site.replace(/^https?:\/\//, '').replace(/\/$/, '') : null;
   return (
     <div className="ks-profile">
-      <div className="ks-profile__head">
-        <Avatar conta={c} size={72} className="ks-profile__avatar" />
+      <section className="ks-profile__card" aria-label="Perfil">
+        <a className="ks-profile__photo" href={c.perfil} target="_blank" rel="noopener noreferrer" aria-label={`Abrir o perfil de @${c.login} no GitHub`}>
+          <Avatar conta={c} size={96} className="ks-profile__avatar" />
+        </a>
         <div className="ks-profile__who">
           <strong>{c.nome ?? c.login}</strong>
-          <a href={c.perfil} target="_blank" rel="noopener noreferrer">
-            @{c.login} <Icon name="external" size={12} />
+          <span className="ks-profile__login">@{c.login}</span>
+          {c.bio && <p className="ks-profile__bio">{c.bio}</p>}
+          <ul className="ks-profile__meta">
+            {c.empresa && <li><Icon name="building" size={14} />{c.empresa}</li>}
+            {c.local && <li><Icon name="mapPin" size={14} />{c.local}</li>}
+            {site && c.site && <li><Icon name="link" size={14} /><a href={c.site} target="_blank" rel="noopener noreferrer nofollow">{site}</a></li>}
+            {c.desde && <li><Icon name="calendar" size={14} />No GitHub desde {new Date(c.desde).getFullYear()}</li>}
+          </ul>
+          <ul className="ks-profile__stats">
+            {c.seguidores !== undefined && <li><b>{milhar(c.seguidores)}</b> {c.seguidores === 1 ? 'seguidor' : 'seguidores'}</li>}
+            {c.seguindo !== undefined && <li><b>{milhar(c.seguindo)}</b> seguindo</li>}
+            {repos !== undefined && <li><b>{milhar(repos)}</b> {repos === 1 ? 'repositório' : 'repositórios'}</li>}
+          </ul>
+          <a className="key key--accent ks-profile__gh" href={c.perfil} target="_blank" rel="noopener noreferrer">
+            Ver perfil no GitHub <Icon name="external" size={14} />
           </a>
         </div>
-        <span className="ks-badge is-ok"><Icon name="check" size={12} /> Conectado</span>
-      </div>
+      </section>
 
-      <dl className="ks-profile__facts">
-        <div><dt>Limite da API</dt><dd>{milhar(c.limite ?? 5000)} chamadas por hora</dd></div>
-        <div><dt>Tipo do token</dt><dd>{tipo}</dd></div>
-        <div><dt>Guardado</dt><dd>{estado.lembrado ? 'Neste navegador, até você sair' : 'Só nesta aba, some ao fechar'}</dd></div>
-        {c.escopos && <div><dt>Escopos</dt><dd>{c.escopos.length ? c.escopos.join(', ') : 'nenhum (só repositórios públicos)'}</dd></div>}
-      </dl>
+      <RepoList onOpenRepo={onOpenRepo} />
 
-      <div className="ks-profile__actions">
-        <button type="button" className="key" onClick={onTrocar}><Icon name="refresh" size={14} /> Trocar token</button>
-        <a className="key" href={URL_TOKENS} target="_blank" rel="noopener noreferrer"><Icon name="external" size={14} /> Tokens no GitHub</a>
-        <button type="button" className="key ks-profile__out" onClick={onSair}><Icon name="logOut" size={14} /> Sair</button>
-      </div>
-      <p className="ks-account__fine">
-        <Icon name="shield" size={14} />
-        <span>Sair apaga o token deste navegador. No GitHub ele continua valendo até vencer ou ser apagado em Tokens no GitHub.</span>
-      </p>
+      <details className="ks-profile__token">
+        <summary>
+          <Icon name="chevronRight" size={14} />
+          <Icon name="key" size={14} />
+          <span>Token e sessão</span>
+          <span className="ks-badge is-ok"><Icon name="check" size={12} /> {milhar(c.limite ?? 5000)} chamadas por hora</span>
+        </summary>
+        <dl className="ks-profile__facts">
+          <div><dt>Tipo do token</dt><dd>{tipo}</dd></div>
+          <div><dt>Guardado</dt><dd>{estado.lembrado ? 'Neste navegador, até você sair' : 'Só nesta aba, some ao fechar'}</dd></div>
+          {c.escopos && <div><dt>Escopos</dt><dd>{c.escopos.length ? c.escopos.join(', ') : 'nenhum (só repositórios públicos)'}</dd></div>}
+        </dl>
+        <div className="ks-profile__actions">
+          <button type="button" className="key" onClick={onTrocar}><Icon name="refresh" size={14} /> Trocar token</button>
+          <a className="key" href={URL_TOKENS} target="_blank" rel="noopener noreferrer"><Icon name="external" size={14} /> Tokens no GitHub</a>
+          <button type="button" className="key ks-profile__out" onClick={onSair}><Icon name="logOut" size={14} /> Sair</button>
+        </div>
+        <p className="ks-account__fine">
+          <Icon name="shield" size={14} />
+          <span>Sair apaga o token deste navegador. No GitHub ele continua valendo até vencer ou ser apagado em Tokens no GitHub.</span>
+        </p>
+      </details>
     </div>
+  );
+}
+
+/** Cor da bolinha da linguagem (só tokens do Catppuccin). */
+const COR_LINGUAGEM: Record<string, string> = {
+  TypeScript: 'blue', JavaScript: 'yellow', Python: 'sapphire', Go: 'sky', Rust: 'peach', Java: 'maroon', 'C#': 'mauve',
+  'C++': 'pink', C: 'overlay-2', HTML: 'red', CSS: 'lavender', SCSS: 'pink', Shell: 'green', PowerShell: 'blue', Lua: 'blue',
+  Ruby: 'red', PHP: 'lavender', Kotlin: 'mauve', Swift: 'peach', Dart: 'teal', Vue: 'green', Svelte: 'peach', 'Jupyter Notebook': 'peach',
+};
+
+function RepoList({ onOpenRepo }: { onOpenRepo?: (slug: string) => void }) {
+  const r = useRepos();
+  const [q, setQ] = useState('');
+  const lista = useMemo(() => (q.trim() ? r.lista.filter((x) => fuzzyMatch(q.trim(), x.nome)) : r.lista), [q, r.lista]);
+  return (
+    <section className="ks-repos" aria-labelledby="repos-titulo">
+      <div className="ks-repos__head">
+        <h3 id="repos-titulo">Seus repositórios {r.status === 'ok' && <span className="ks-repos__count">{r.lista.length}</span>}</h3>
+        <input className="ks-input ks-repos__filter" placeholder="Filtrar repositórios" aria-label="Filtrar repositórios" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      {r.status === 'carregando' && !r.lista.length ? (
+        <ul className="ks-repos__list" aria-busy="true">
+          {[0, 1, 2, 3].map((i) => <li key={i} className="ks-repos__skel"><span /><span /></li>)}
+        </ul>
+      ) : r.status === 'erro' ? (
+        <p className="ks-repos__empty">
+          Não deu para ler os repositórios: {r.erro} <button type="button" className="ks-linkbtn" onClick={() => carregarRepos(true)}>Tentar de novo</button>
+        </p>
+      ) : lista.length === 0 ? (
+        <p className="ks-repos__empty">{q ? 'Nenhum repositório combina.' : 'Nenhum repositório que este token enxergue. Confira o Repository access do token.'}</p>
+      ) : (
+        <ul className="ks-repos__list">
+          {lista.map((x) => <RepoRow key={x.nome} repo={x} onOpen={onOpenRepo} />)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function RepoRow({ repo, onOpen }: { repo: RepoDaConta; onOpen?: (slug: string) => void }) {
+  const [dono, nome] = repo.nome.split('/');
+  const corpo = (
+    <>
+      <Icon name={repo.privado ? 'lock' : 'book'} size={16} className="ks-repos__icon" />
+      <span className="ks-repos__main">
+        <span className="ks-repos__name"><span className="ks-repos__owner">{dono}/</span>{nome}</span>
+        {repo.descricao && <span className="ks-repos__desc">{repo.descricao}</span>}
+        <span className="ks-repos__meta">
+          {repo.privado && <span className="ks-repos__tag">privado</span>}
+          {repo.fork && <span className="ks-repos__tag">fork</span>}
+          {repo.linguagem && <span><i className="ks-repos__lang" style={{ background: `var(--ctp-${COR_LINGUAGEM[repo.linguagem] ?? 'overlay-1'})` }} />{repo.linguagem}</span>}
+          {repo.estrelas > 0 && <span><Icon name="star" size={12} />{milhar(repo.estrelas)}</span>}
+          {repo.atualizado && <span>{relativo(repo.atualizado)}</span>}
+        </span>
+      </span>
+    </>
+  );
+  return (
+    <li className="ks-repos__row">
+      {onOpen ? (
+        <button type="button" className="ks-repos__item" onClick={() => onOpen(repo.nome)}>
+          {corpo}
+          <span className="ks-repos__go">Abrir no Cerne <Icon name="arrowRight" size={14} /></span>
+        </button>
+      ) : (
+        <div className="ks-repos__item">{corpo}</div>
+      )}
+      <a className="ks-icon-btn ks-repos__ext" href={`https://github.com/${repo.nome}`} target="_blank" rel="noopener noreferrer" aria-label={`Abrir ${repo.nome} no GitHub`} data-tip="Abrir no GitHub">
+        <Icon name="external" size={14} />
+      </a>
+    </li>
   );
 }
 

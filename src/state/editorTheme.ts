@@ -5,7 +5,7 @@ import { fetchThemeData } from '../code/client';
 import type { ThemeData } from '../code/protocol';
 import { buildThemeVars } from '../lib/themeVars';
 import { registerImportedThemes } from './themes';
-import { prefsStore, type EditorScope } from './prefs';
+import { effectiveTheme, prefsStore, type EditorScope } from './prefs';
 import { createStore, useStore } from './store';
 
 export type EditorVars = { scope: EditorScope; vars: Record<string, string> | null; themeId: string | null };
@@ -96,7 +96,7 @@ export function startEditorThemeSync() {
   if (seed) void load(seed);
   return prefsStore.subscribe(() => {
     const p = prefsStore.get();
-    const key = [p.theme, p.accent, p.contrast, p.editorScope].join('|');
+    const key = [effectiveTheme(p), p.accent, p.contrast, p.editorScope].join('|');
     if (p.editorTheme !== lastTheme) {
       lastTheme = p.editorTheme;
       void load(p.editorTheme);

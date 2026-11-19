@@ -29,9 +29,16 @@ export function Avatar({ conta, size = 28, className = '' }: { conta: Conta | nu
 /** Botão de conta: "Entrar" sem token; foto e @login com token; aviso quando o token parou de valer. */
 export function AccountButton({ onClick, compact = false }: { onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; compact?: boolean }) {
   const e = useConta();
+  if (e.status === 'anonimo' && compact) {
+    return (
+      <button type="button" className="ks-accountbtn is-anon is-icon" aria-label="Entrar no GitHub" data-tip="Entrar no GitHub: 5 000 chamadas por hora e repositórios privados" onClick={onClick}>
+        <Icon name="user" />
+      </button>
+    );
+  }
   if (e.status === 'anonimo') {
     return (
-      <button type="button" className={`ks-accountbtn is-anon${compact ? ' is-compact' : ''}`} onClick={onClick} data-tip={compact ? 'Entrar com token: 5 000 chamadas por hora e repositórios privados' : undefined}>
+      <button type="button" className="ks-accountbtn is-anon" onClick={onClick}>
         <Icon name="user" />
         <span className="ks-accountbtn__name">Entrar</span>
       </button>

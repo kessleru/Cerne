@@ -3,13 +3,13 @@ import type { CSSProperties } from 'react';
 import { cascadeTree, markScreenReady, withThemeTransition } from '../anim/motion';
 import { type CodeViewHandle, type FindMatch } from '../code/CodeView';
 import type { ThemeInfo } from '../code/protocol';
-import type { Commit, FileContent, Quota, Ref, TreeEntry } from '../data/types';
+import type { Commit, FileContent, Quota, Ref, Tree as TreeData, TreeEntry } from '../data/types';
 import { PACK_LABELS } from '../icons/packs';
 import { formatLineHash, parseLineHash, type LineRange } from '../lib/hash';
 import { baseName, langOf } from '../lib/lang';
-import { buildPath } from '../lib/route';
+import { buildPath, parseRepoLink, type RepoLink } from '../lib/route';
 import { source } from '../data/source';
-import { ACCENTS, SCOPE_LABELS, THEMES, prefsStore, reducedMotion, usePrefs, type Density, type EditorScope, type IconPack } from '../state/prefs';
+import { ACCENTS, APPEARANCE_LABELS, DARK_THEMES, SCOPE_LABELS, prefsStore, reducedMotion, usePrefs, type Density, type EditorScope, type IconPack } from '../state/prefs';
 import { useEditorVars, varsToStyle } from '../state/editorTheme';
 import { useEditorThemes } from '../state/themes';
 import { CommitList, DiffView } from '../viewers/diff';
@@ -60,7 +60,7 @@ function useMedia(q: string) {
 
 const READ_KEY = 'cerne:leitura';
 
-export function Workspace({ session, onExit }: { session: Session; onExit: () => void }) {
+export function Workspace({ session, onExit, onOpen }: { session: Session; onExit: () => void; onOpen?: (l: RepoLink) => void }) {
   const prefs = usePrefs();
   const narrow = useMedia('(max-width: 719px)');
   // '' = ramo ainda não resolvido (link sem ramo): vira o padrão do repositório quando getRepo responde
@@ -111,6 +111,8 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
     }
   });
   const [reveal, setReveal] = useState<{ path: string; nonce: number } | null>(null);
+  /** caminho do link que não existe neste ramo */
+  const [missing, setMissing] = useState<string | null>(null);
 
   const code = useRef<CodeViewHandle>(null);
   const findInput = useRef<HTMLInputElement>(null);
@@ -161,8 +163,24 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
       setActive(session.path);
       if (session.lines) setSels({ [session.path]: session.lines });
       performance.mark('cerne:abrir');
+      return;
     }
-  }, [entries, session.path, session.lines]);
+    // pasta (ou raiz): revela na árvore e abre o README dela, como o GitHub faz
+    const dir = session.path ?? '';
+    const isDir = !dir || entries.some((e) => e.path.startsWith(dir + '/'));
+    if (isDir) {
+      if (dir) {
+        setSideOpen(true);
+        setReveal({ path: dir, nonce: Date.now() });
+      }
+      const readme = findReadme(entries.map((e) => e.path), dir);
+      if (readme) {
+        lastUrlPath.current = readme + '|' + refName; // troca o endereço sem criar um passo a mais no Voltar
+        setTabs([{ path: readme, preview: true, pinned: false }]);
+        setActive(readme);
+      }
+    } else if (!(entries as TreeData).truncated) setMissing(session.path);
+  }, [entries, session.path, session.lines, refName]);
 
   // anima a árvore em cascata na primeira vez
   useEffect(() => {
@@ -176,6 +194,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
     performance.clearMarks('cerne:abrir');
     performance.mark('cerne:abrir');
     setView('file');
+    setMissing(null);
     setDemo(null);
     setDrawer(false);
     setFindOpen(false);
@@ -306,7 +325,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
 
   // sabor da interface: fade de 160 ms; acento: só cor, em --dur-fast (sem View Transition)
   const setPref = useCallback((patch: Parameters<typeof prefsStore.set>[0]) => {
-    if ('theme' in patch) withThemeTransition(() => prefsStore.set(patch));
+    if ('theme' in patch || 'appearance' in patch) withThemeTransition(() => prefsStore.set(patch));
     else prefsStore.set(patch);
   }, []);
 
@@ -331,7 +350,8 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
     add('close', 'Arquivo', 'Fechar a aba atual', () => active && closeTab(active), ['Ctrl', 'W']);
     add('ref', 'Repositório', 'Trocar ramo, tag ou commit...', () => setRefOpen(true));
     add('exit', 'Repositório', 'Voltar ao início', onExit, ['Alt', 'Home']);
-    for (const t of THEMES) add('tema-' + t.id, 'Tema', `Tema da página: ${t.label}`, () => setPref({ theme: t.id }));
+    for (const a of ['system', 'light', 'dark'] as const) add('aparencia-' + a, 'Tema', `Claro ou escuro: ${APPEARANCE_LABELS[a]}`, () => setPref({ appearance: a }));
+    for (const t of DARK_THEMES) add('tema-' + t.id, 'Tema', `Sabor do escuro: ${t.label}`, () => setPref({ theme: t.id }));
     for (const a of ACCENTS) add('acento-' + a, 'Tema', `Cor de destaque: ${a}`, () => setPref({ accent: a }));
     add('ed-sys', 'Tema do editor', 'Tema do editor: igual à interface', () => prefsStore.set({ editorTheme: null }));
     for (const t of editorThemes) add('ed-' + t.id, 'Tema do editor', `Tema do editor: ${t.label}`, () => prefsStore.set({ editorTheme: t.id }));
@@ -467,7 +487,22 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
     ) : (
       <DiffView before={diff.before} after={diff.after} commit={diff.commit} path={diff.path} />
     );
-  } else if (active)
+  } else if (missing && !active)
+    body = (
+      <PaneState
+        kind="error"
+        title="Arquivo não encontrado"
+        actions={
+          <>
+            <button type="button" className="key key--accent" onClick={() => setPalette({ initial: missing.split('/').pop() ?? '', origin: null })}>Buscar pelo nome</button>
+            <button type="button" className="key" onClick={() => setMissing(null)}>Ver o repositório</button>
+          </>
+        }
+      >
+        <code>{missing}</code> não existe em <b>{refName}</b>. Ele pode ter sido movido, renomeado ou estar em outro ramo.
+      </PaneState>
+    );
+  else if (active)
     body = (
       <>
         <FilePane
@@ -649,7 +684,7 @@ export function Workspace({ session, onExit }: { session: Session; onExit: () =>
         )}
       </Presence>
       <Presence open={prefsOpen}>{prefsOpen && <Preferences origin={prefsOrigin} onClose={() => setPrefsOpen(false)} onAccount={() => { setPrefsOpen(false); setAccountOpen(null); }} />}</Presence>
-      <Presence open={accountOpen !== false}>{accountOpen !== false && <Account origin={accountOpen} onClose={() => setAccountOpen(false)} />}</Presence>
+      <Presence open={accountOpen !== false}>{accountOpen !== false && <Account origin={accountOpen} onClose={() => setAccountOpen(false)} onOpenRepo={onOpen ? (slug) => { const l = parseRepoLink(slug); if (l) onOpen(l); } : undefined} />}</Presence>
       <Presence open={snippet}>
         {snippet && active && lines && selection && <SnippetDialog path={active} lines={lines} range={selection} origin={snipOrigin} onClose={() => setSnippet(false)} />}
       </Presence>
@@ -674,6 +709,18 @@ function centerOf(e: { currentTarget: Element; detail?: number }): { x: number; 
   if (e.detail === 0) return null; // acionado pelo teclado
   const r = e.currentTarget.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+/** README da pasta (o primeiro que achar: README.md, readme.md, README, README.rst...). */
+function findReadme(paths: string[], dir: string): string | null {
+  const prefix = dir ? dir + '/' : '';
+  const nomes = paths.filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'));
+  const ordem = ['readme.md', 'readme.markdown', 'readme', 'readme.txt', 'readme.rst'];
+  for (const o of ordem) {
+    const achado = nomes.find((p) => p.slice(prefix.length).toLowerCase() === o);
+    if (achado) return achado;
+  }
+  return nomes.find((p) => /^readme\./i.test(p.slice(prefix.length))) ?? null;
 }
 
 /** Painel sem arquivo: os três atalhos que levam a algum lugar. */

@@ -57,7 +57,7 @@
   box-shadow: var(--ks-overlay-shadow);
   color: var(--ctp-text);
 }
-.ks-account.is-profile { width: min(560px, 100%); }
+.ks-account.is-profile { width: min(780px, 100%); }
 .ks-account__body { overflow: auto; padding: var(--space-6); overscroll-behavior: contain; }
 .ks-account .key { display: inline-flex; align-items: center; gap: var(--space-2); --key-px: 14px; --key-py: 6px; font-size: 13px; text-decoration: none; }
 .ks-account h3, .ks-account h4, .ks-account p { margin: 0; }
@@ -245,20 +245,75 @@
 :root[data-motion='reduce'] .ks-shot .is-hl, :root[data-motion='reduce'] .ks-shot__caret { animation: none; }
 
 /* ---------- Perfil ---------- */
-.ks-profile { display: grid; gap: var(--space-5); }
-.ks-profile__head { display: flex; align-items: center; gap: var(--space-4); }
-.ks-profile__avatar { box-shadow: 0 0 0 2px var(--ctp-mantle), 0 0 0 4px var(--ctp-accent); }
+.ks-profile { display: grid; gap: var(--space-6); }
+.ks-profile__card { display: flex; gap: var(--space-5); align-items: flex-start; }
+.ks-profile__photo { flex: none; border-radius: var(--radius-full); }
+.ks-profile__avatar { box-shadow: 0 0 0 3px var(--ctp-mantle), 0 0 0 5px var(--ctp-accent); transition: box-shadow var(--dur-fast) var(--ease-out); }
+@media (hover: hover) { .ks-profile__photo:hover .ks-profile__avatar { box-shadow: 0 0 0 3px var(--ctp-mantle), 0 0 0 5px var(--ctp-text); } }
 .ks-profile__who { display: grid; flex: 1; gap: 2px; min-width: 0; }
-.ks-profile__who strong { overflow: hidden; font: 600 18px/24px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
-.ks-profile__who a { display: inline-flex; align-items: center; gap: 4px; justify-self: start; color: var(--ctp-subtext-0); font: 400 13px/18px var(--font-mono); text-decoration: none; }
-@media (hover: hover) { .ks-profile__who a:hover { color: var(--ctp-accent); } }
-.ks-profile__facts { display: grid; margin: 0; border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-lg); background: var(--ctp-base); }
-.ks-profile__facts > div { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); }
+.ks-profile__who > strong { font: 600 20px/28px var(--font-mono); overflow-wrap: anywhere; }
+.ks-profile__login { color: var(--ctp-subtext-0); font: 400 14px/20px var(--font-mono); }
+.ks-profile__bio { margin-top: var(--space-2) !important; max-width: 60ch; color: var(--ctp-subtext-1); font: 400 14px/21px var(--font-sans); }
+.ks-profile__meta, .ks-profile__stats { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0 0; padding: 0; list-style: none; color: var(--ctp-subtext-0); font: 400 13px/20px var(--font-sans); }
+.ks-profile__meta li { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ks-profile__meta .ks-icon { flex: none; color: var(--ctp-meta); }
+.ks-profile__meta a { overflow: hidden; color: var(--ctp-subtext-1); text-overflow: ellipsis; white-space: nowrap; }
+.ks-profile__stats { margin-top: var(--space-2); }
+.ks-profile__stats b { color: var(--ctp-text); font-family: var(--font-mono); }
+.ks-profile__gh { justify-self: start; margin-top: var(--space-4); }
+
+.ks-profile__token { border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-lg); background: var(--ctp-base); }
+.ks-profile__token > summary { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); color: var(--ctp-subtext-1); font: 500 13px/18px var(--font-mono); list-style: none; cursor: pointer; }
+.ks-profile__token > summary::-webkit-details-marker { display: none; }
+.ks-profile__token > summary > .ks-icon:first-child { color: var(--ctp-meta); transition: rotate var(--dur-fast) var(--ease-out); }
+.ks-profile__token[open] > summary > .ks-icon:first-child { rotate: 90deg; }
+.ks-profile__token > summary .ks-badge { margin-left: auto; }
+.ks-profile__token[open] { display: grid; gap: var(--space-4); padding-bottom: var(--space-4); }
+.ks-profile__token[open] > :not(summary) { margin-inline: var(--space-4); }
+.ks-profile__facts { display: grid; margin: 0; border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-md); background: var(--ctp-mantle); }
+.ks-profile__facts > div { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-2) var(--space-3); }
 .ks-profile__facts > div + div { border-top: 1px solid var(--ctp-surface-0); }
 .ks-profile__facts dt { color: var(--ctp-meta); font: 400 12px/18px var(--font-mono); }
 .ks-profile__facts dd { margin: 0; color: var(--ctp-text); font: 500 13px/18px var(--font-mono); text-align: right; }
 .ks-profile__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .ks-profile__out { margin-left: auto; }
+
+/* ---------- Lista de repositórios (perfil e página inicial) ---------- */
+.ks-repos { display: grid; gap: var(--space-3); }
+.ks-repos__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ks-repos__head h3 { display: inline-flex; align-items: center; gap: var(--space-2); font: 600 15px/22px var(--font-mono); }
+.ks-repos__count { padding: 0 8px; border-radius: var(--radius-full); background: var(--ctp-surface-0); color: var(--ctp-subtext-0); font: 500 11px/18px var(--font-mono); }
+.ks-repos__filter { width: min(240px, 100%); }
+.ks-repos__list { display: grid; max-height: 46dvh; margin: 0; padding: 0; overflow: auto; border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-lg); background: var(--ctp-base); list-style: none; }
+.ks-repos__row { position: relative; display: flex; align-items: stretch; }
+.ks-repos__row + .ks-repos__row { border-top: 1px solid var(--ctp-surface-0); }
+.ks-repos__item { display: flex; flex: 1; align-items: flex-start; gap: var(--space-3); min-width: 0; padding: var(--space-3) var(--space-4); border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+div.ks-repos__item { cursor: default; }
+.ks-repos__icon { flex: none; margin-top: 2px; color: var(--ctp-meta); }
+.ks-repos__main { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.ks-repos__name { overflow: hidden; color: var(--ctp-text); font: 500 13px/20px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.ks-repos__owner { color: var(--ctp-subtext-0); font-weight: 400; }
+.ks-repos__desc { overflow: hidden; color: var(--ctp-subtext-0); font: 400 12px/18px var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
+.ks-repos__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin-top: 2px; color: var(--ctp-meta); font: 400 11px/16px var(--font-mono); }
+.ks-repos__meta > span { display: inline-flex; align-items: center; gap: 4px; }
+.ks-repos__lang { width: 8px; height: 8px; border-radius: var(--radius-full); }
+.ks-repos__tag { padding: 0 6px; border: 1px solid var(--ctp-surface-1); border-radius: var(--radius-full); color: var(--ctp-subtext-0); }
+.ks-repos__go { display: inline-flex; flex: none; align-items: center; gap: 4px; align-self: center; color: var(--ctp-accent); font: 500 12px/16px var(--font-mono); opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
+.ks-repos__item:focus-visible { outline-offset: -2px; background: var(--ctp-surface-0); }
+.ks-repos__item:focus-visible .ks-repos__go { opacity: 1; }
+.ks-repos__ext { flex: none; align-self: center; margin-right: var(--space-2); }
+@media (hover: hover) {
+  button.ks-repos__item:hover { background: color-mix(in srgb, var(--ctp-surface-0) 55%, transparent); }
+  button.ks-repos__item:hover .ks-repos__go { opacity: 1; }
+  .ks-repos__ext:hover { color: var(--ctp-text); }
+}
+.ks-repos__empty { padding: var(--space-4); border: 1px dashed var(--ctp-surface-1); border-radius: var(--radius-lg); color: var(--ctp-subtext-0); font: 400 13px/20px var(--font-sans); }
+.ks-repos__skel { display: grid; gap: 6px; padding: var(--space-3) var(--space-4); }
+.ks-repos__skel + .ks-repos__skel { border-top: 1px solid var(--ctp-surface-0); }
+.ks-repos__skel span { height: 10px; border-radius: var(--radius-full); background: var(--ctp-surface-0); animation: ks-pulse 900ms var(--ease-out) infinite alternate; }
+.ks-repos__skel span:first-child { width: 40%; }
+.ks-repos__skel span:last-child { width: 70%; height: 8px; }
+.ks-linkbtn { padding: 0; border: 0; background: none; color: var(--ctp-accent); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 
 /* entrada: barra de cima com conta e preferências */
 .ks-entry__top { position: relative; z-index: 2; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
@@ -278,6 +333,14 @@
   .ks-shot__split { grid-template-columns: minmax(0, 1fr); }
   .ks-shot__side { padding: 0 0 var(--space-2); border-right: 0; border-bottom: 1px solid var(--ctp-surface-0); }
   .ks-profile__out { margin-left: 0; }
-  .ks-accountbtn__name { display: none; }
+  .ks-profile__card { flex-direction: column; align-items: center; text-align: center; }
+  .ks-profile__meta, .ks-profile__stats { justify-content: center; }
+  .ks-profile__gh { justify-self: center; }
+  .ks-repos__go { display: none; }
+  .ks-accountbtn:not(.is-anon) .ks-accountbtn__name { display: none; }
+  .ks-accountbtn:not(.is-anon) { padding-right: 2px; }
+  .ks-repos__filter { width: 100%; }
 }
 :root[data-contrast='high'] .ks-shot .is-hl { outline-color: var(--ctp-text); }
+/* botão de conta só com ícone (barra do app) */
+.ks-accountbtn.is-anon.is-icon { border: 1px solid color-mix(in srgb, var(--ctp-accent) 45%, transparent); }

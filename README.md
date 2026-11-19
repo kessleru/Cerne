@@ -33,8 +33,13 @@ node scripts/medir-codeview.mjs
 Sem token, o GitHub libera 60 chamadas por hora e só repositórios públicos. O botão **Entrar** (canto de cima, na tela inicial e na barra do app) abre a janela da conta:
 
 - cole um token pessoal; o Cerne confere com o GitHub (`GET /user`) antes de guardar e mostra sua foto e seu @login;
+- clicar na foto abre seu perfil do GitHub: bio, empresa, local, seguidores e a lista dos seus repositórios (`GET /user/repos`), que abrem no Cerne com um clique;
 - um guia ilustrado, passo a passo, mostra como criar o token (fine-grained, recomendado, ou clássico), com um atalho que abre o formulário do GitHub já preenchido (nome, 90 dias, Contents só leitura);
 - o token fica só neste navegador (ou só na aba, se "Lembrar" estiver desligado) e só vai no cabeçalho `Authorization`.
+
+## Tema
+
+Claro ou escuro segue o sistema por padrão (Preferências > Aparência, o botão de monitor/sol/lua na página inicial ou a paleta, Ctrl K). Escolha também o sabor do escuro: Frappé, Macchiato ou Mocha. O claro é o Latte. `public/tema-inicial.js` aplica o tema antes do primeiro desenho, para não piscar.
 
 ## Atalhos
 

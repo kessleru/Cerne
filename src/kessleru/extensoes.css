@@ -612,3 +612,66 @@ button.ks-appbar__ref { display: inline-flex; align-items: center; gap: var(--sp
 :root[data-contrast='high'] .ks-tree__indent::before { background: var(--ctp-overlay-0); }
 :root[data-contrast='high'] .ks-tree__indent.is-scope::before { background: var(--ctp-text); }
 @media (forced-colors: active) { .ks-tree__indent::before { background: GrayText; } .ks-tree__indent.is-scope::before { background: CanvasText; } }
+
+/* Preferências: claro/escuro com ícone; três sabores escuros lado a lado */
+.ks-appearance button { display: inline-flex; align-items: center; gap: 6px; }
+.ks-appearance button:disabled { opacity: 0.4; cursor: default; }
+.ks-prefs .ks-theme__themes.is-three { grid-template-columns: repeat(3, auto); }
+
+/* ---------- Histórico: linha do tempo agrupada por dia ---------- */
+.ks-timeline { display: block; padding: var(--space-4) var(--space-6) var(--space-8); }
+.ks-timeline__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-5); color: var(--ctp-subtext-0); font: 400 13px/20px var(--font-mono); }
+.ks-timeline__head .ks-icon { color: var(--ctp-meta); }
+.ks-timeline__head code { color: var(--ctp-text); font: inherit; }
+.ks-timeline__count { padding: 0 8px; border-radius: var(--radius-full); background: var(--ctp-surface-0); color: var(--ctp-subtext-0); font-size: 11px; line-height: 18px; }
+.ks-timeline__tip { margin-left: auto; color: var(--ctp-meta); font: 400 12px/18px var(--font-sans); }
+.ks-timeline__day { position: relative; max-width: 920px; padding-left: 28px; }
+/* trilho vertical: a mesma linha das guias da árvore */
+.ks-timeline__day::before { content: ''; position: absolute; top: 24px; bottom: 0; left: 7px; width: 1px; background: var(--ctp-surface-2); }
+.ks-timeline__day:last-child::before { bottom: var(--space-4); }
+.ks-timeline__date { position: relative; display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2) -28px; color: var(--ctp-subtext-1); font: 500 12px/24px var(--font-mono); }
+.ks-timeline__date .ks-icon { width: 16px; height: 16px; padding: 2px; box-sizing: border-box; border-radius: var(--radius-full); background: var(--ctp-base); color: var(--ctp-meta); }
+.ks-timeline__list { display: grid; margin: 0 0 var(--space-5); padding: 0; overflow: hidden; border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-lg); list-style: none; }
+.ks-timeline__list > li + li { border-top: 1px solid var(--ctp-surface-0); }
+.ks-timeline__item { display: flex; align-items: center; gap: var(--space-3); border-radius: 0; padding: var(--space-3) var(--space-4); }
+.ks-timeline__avatar { display: grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-full); font: 600 11px/1 var(--font-mono); }
+.ks-timeline__main { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.ks-timeline__main .ks-commits__msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks-timeline__main .ks-commits__meta b { color: var(--ctp-subtext-1); font-weight: 500; }
+.ks-timeline__sha { flex: none; padding: 2px 6px; border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-sm); color: var(--ctp-subtext-0); font: 400 11px/16px var(--font-mono); }
+.ks-timeline__go { flex: none; color: var(--ctp-meta); opacity: 0; transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out); }
+.ks-timeline__item:focus-visible { outline-offset: -2px; }
+.ks-timeline__item:focus-visible .ks-timeline__go { opacity: 1; }
+@media (hover: hover) { .ks-timeline__item:hover .ks-timeline__go { opacity: 1; translate: 2px 0; } }
+@media (max-width: 719px) {
+  .ks-timeline { padding: var(--space-3); }
+  .ks-timeline__tip, .ks-timeline__sha { display: none; }
+}
+
+/* ---------- Preferências: navegação lateral por seções ---------- */
+.ks-prefs { width: min(900px, 100%); }
+.ks-prefs__main { display: grid; grid-template-columns: 188px minmax(0, 1fr); min-height: 0; flex: 1; }
+.ks-prefs__nav { display: grid; align-content: start; gap: 2px; padding: var(--space-4) var(--space-3); border-right: 1px solid var(--ctp-surface-0); }
+.ks-prefs__nav button { display: flex; align-items: center; gap: var(--space-2); height: 34px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: none; color: var(--ctp-subtext-0); font: 400 13px/18px var(--font-mono); text-align: left; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.ks-prefs__nav button .ks-icon { flex: none; color: var(--ctp-meta); }
+.ks-prefs__nav button[aria-current='true'] { background: var(--ctp-surface-0); color: var(--ctp-text); }
+.ks-prefs__nav button[aria-current='true'] .ks-icon { color: var(--ctp-accent); }
+@media (hover: hover) { .ks-prefs__nav button:not([aria-current='true']):hover { color: var(--ctp-text); background: color-mix(in srgb, var(--ctp-surface-0) 50%, transparent); } }
+.ks-prefs__main .ks-prefs__body { min-height: 0; }
+.ks-prefs__section:focus { outline: none; }
+@media (max-width: 719px) {
+  .ks-prefs__main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .ks-prefs__nav { display: flex; gap: var(--space-1); overflow-x: auto; padding: var(--space-2) var(--space-3); border-right: 0; border-bottom: 1px solid var(--ctp-surface-0); scrollbar-width: none; }
+  .ks-prefs__nav button { flex: none; height: 30px; }
+}
+
+/* Celular: barra de cima e de status mais enxutas (o resto está na paleta, Ctrl K) */
+@media (max-width: 719px) {
+  .ks-appbar__repo { min-width: 0; }
+  .ks-appbar__repo > .ks-icon { display: none; }
+  .ks-appstatus > div:first-child > span:nth-child(n + 3) { display: none; }
+}
+@media (max-width: 420px) {
+  .ks-appbar__actions .ks-icon-btn[aria-label='Copiar link das linhas'],
+  .ks-appbar__actions .ks-icon-btn[aria-label='Imagem do trecho'] { display: none; }
+}

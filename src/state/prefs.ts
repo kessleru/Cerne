@@ -7,6 +7,11 @@ export const THEMES = [
   { id: 'mocha', label: 'Mocha', dark: true },
 ] as const;
 export type ThemeId = (typeof THEMES)[number]['id'];
+/** Sabores escuros (o claro é só o Latte). */
+export const DARK_THEMES = THEMES.filter((t) => t.dark);
+/** Claro ou escuro: igual ao sistema da pessoa, ou fixo. */
+export type Appearance = 'system' | 'light' | 'dark';
+export const APPEARANCE_LABELS: Record<Appearance, string> = { system: 'Sistema', light: 'Claro', dark: 'Escuro' };
 
 export const ACCENTS = [
   'rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach',
@@ -47,6 +52,9 @@ export type Density = 'compact' | 'normal' | 'comfortable';
 export type Guides = 'always' | 'hover' | 'none';
 
 export type Prefs = {
+  /** claro, escuro ou igual ao sistema */
+  appearance: Appearance;
+  /** sabor usado quando escuro (Frappé, Macchiato ou Mocha) */
   theme: ThemeId;
   accent: AccentId;
   /** id de um tema do VS Code; null = igual à interface */
@@ -68,6 +76,7 @@ export type Prefs = {
 };
 
 export const DEFAULT_PREFS: Prefs = {
+  appearance: 'system',
   theme: 'mocha',
   accent: 'green',
   editorTheme: null,
@@ -91,6 +100,12 @@ export const DEFAULT_PREFS: Prefs = {
     const raw = localStorage.getItem('cerne:prefs');
     if (!raw) return;
     const old = JSON.parse(raw) as Record<string, unknown>;
+    // antes de "Aparência", o Latte era escolhido como sabor: vira "Claro" fixo
+    if (!('appearance' in old) && old.theme === 'latte') {
+      old.appearance = 'light';
+      old.theme = 'mocha';
+      localStorage.setItem('cerne:prefs', JSON.stringify(old));
+    }
     if (!('editorMode' in old)) return;
     if (old.editorMode === 'fixed' && typeof old.editorFixed === 'string') old.editorTheme = old.editorFixed;
     delete old.editorMode;
@@ -114,6 +129,25 @@ export const FONT_LABELS: Record<FontId, string> = {
   sistema: 'Mono do sistema',
   roboto: 'Roboto',
 };
+
+const darkQuery = () => (typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null);
+/** O sistema pede escuro? Sem informação, escuro. */
+export function systemDark(): boolean {
+  return darkQuery()?.matches ?? true;
+}
+/** Sabor que vale agora: Latte no claro; no escuro, o sabor escolhido. */
+export function effectiveTheme(p: Prefs): ThemeId {
+  const dark = p.appearance === 'dark' || (p.appearance === 'system' && systemDark());
+  return dark ? (p.theme === 'latte' ? 'mocha' : p.theme) : 'latte';
+}
+/** Quando o sistema troca entre claro e escuro, avisa quem ouve as preferências. */
+export function watchSystemScheme(): () => void {
+  const q = darkQuery();
+  if (!q) return () => {};
+  const on = () => prefsStore.get().appearance === 'system' && prefsStore.set({});
+  q.addEventListener('change', on);
+  return () => q.removeEventListener('change', on);
+}
 
 /** Tema do editor efetivo. Null = igual à interface. */
 export function effectiveEditorTheme(p: Prefs): string | null {
