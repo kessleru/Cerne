@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useOcultos } from '../state/ocultos';
 import type { KeyboardEvent } from 'react';
 import type { TreeEntry } from '../data/types';
@@ -12,19 +12,28 @@ type Node = { name: string; path: string; dir: boolean; size: number; children: 
 
 export function buildTree(entries: TreeEntry[]): Node {
   const root: Node = { name: '', path: '', dir: true, size: 0, children: [] };
+  // pasta por caminho: achar o filho sem varrer a lista (pastas com milhares de arquivos ficavam lentas)
+  const pastas = new Map<string, Node>([['', root]]);
   for (const e of entries) {
     const parts = e.path.split('/');
     let cur = root;
-    parts.forEach((name, i) => {
-      const path = parts.slice(0, i + 1).join('/');
+    let path = '';
+    for (let i = 0; i < parts.length; i++) {
+      const name = parts[i]!;
+      path = i ? `${path}/${name}` : name;
       const last = i === parts.length - 1;
-      let next = cur.children.find((c) => c.name === name);
+      if (last) {
+        cur.children.push({ name, path, dir: false, size: e.size, children: [] });
+        break;
+      }
+      let next = pastas.get(path);
       if (!next) {
-        next = { name, path, dir: !last, size: last ? e.size : 0, children: [] };
+        next = { name, path, dir: true, size: 0, children: [] };
+        pastas.set(path, next);
         cur.children.push(next);
       }
       cur = next;
-    });
+    }
   }
   const sort = (n: Node) => {
     n.children.sort((a, b) => (a.dir === b.dir ? a.name.localeCompare(b.name, 'pt-BR') : a.dir ? -1 : 1));
@@ -35,6 +44,10 @@ export function buildTree(entries: TreeEntry[]): Node {
 }
 
 type Row = { node: Node; depth: number };
+
+// linhas desenhadas de uma vez; o resto vem no botão "Mostrar mais" (um filtro como "e" num repo de 60 mil arquivos
+// desenhava tudo: mais de um milhão de elementos e segundos de tela travada)
+const LOTE = 500;
 
 function flatten(node: Node, expanded: ReadonlySet<string>, keep: ReadonlySet<string> | null, hidden: ReadonlySet<string>, depth = 0, out: Row[] = []): Row[] {
   for (const c of node.children) {
@@ -88,8 +101,9 @@ export function Tree({
   }, [active, focusPath, entries]);
 
   // filtro: mostra os arquivos que combinam e as pastas que os contêm
+  const filtro = useDeferredValue(query);
   const keep = useMemo(() => {
-    const q = query.trim();
+    const q = filtro.trim();
     if (!q) return null;
     const s = new Set<string>();
     for (const e of entries) {
@@ -99,12 +113,17 @@ export function Tree({
       }
     }
     return s;
-  }, [query, entries]);
+  }, [filtro, entries]);
 
-  const rows = useMemo(() => {
+  const todas = useMemo(() => {
     const exp = keep ? new Set([...keep]) : expanded;
     return flatten(root, exp, keep, hidden);
   }, [root, expanded, keep, hidden]);
+  // quantas linhas desenhar; volta ao primeiro lote quando o filtro muda, e cresce para alcançar o arquivo aberto
+  const [lote, setLote] = useState({ filtro, n: LOTE });
+  const iAtivo = active ? todas.findIndex((r) => r.node.path === active) : -1;
+  const n = Math.max(lote.filtro === filtro ? lote.n : LOTE, iAtivo + 1);
+  const rows = todas.length > n ? todas.slice(0, n) : todas;
 
   // abrir um arquivo rola até a linha dele; abrir ou fechar pasta não mexe na rolagem
   const scrolled = useRef<string | null>(null);
@@ -205,6 +224,11 @@ export function Tree({
       >
         {rows.length === 0 && <p className="ks-tree__none">Nenhum arquivo combina.</p>}
         {renderRows(rows, { expanded, keep, active, tabbable, scope: parentOf(tabbable ?? active), pack, toggle, onOpen, setFocus, esconder })}
+        {todas.length > rows.length && (
+          <button type="button" className="ks-tree__mais" onClick={() => setLote({ filtro, n: rows.length + LOTE * 2 })}>
+            Mostrar mais {Math.min(LOTE * 2, todas.length - rows.length).toLocaleString('pt-BR')} de {(todas.length - rows.length).toLocaleString('pt-BR')} restantes
+          </button>
+        )}
       </div>
       <Ocultos entries={entries} ocultos={ocultos} pack={pack} onOpen={onOpen} mostrar={mostrar} mostrarTodos={mostrarTodos} />
     </>

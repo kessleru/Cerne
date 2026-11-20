@@ -96,8 +96,16 @@ const VAZIAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'com', 'para'
 export type Rotulos = { temas: Record<string, string>; areas: Record<string, string> };
 
 type Campo = { peso: number; ws: string[] };
-type Indice = { campos: Campo[]; texto: string };
+type Indice = { campos: Campo[] };
 const cache = new WeakMap<Entrada, Indice>();
+// a mesma palavra aparece em milhares de projetos ("react", "api"): guarda uma cópia só de cada
+const banco = new Map<string, string>();
+const unica = (w: string): string => {
+  const ja = banco.get(w);
+  if (ja !== undefined) return ja;
+  banco.set(w, w);
+  return w;
+};
 
 function indiceDe(e: Entrada, r: Rotulos): Indice {
   let i = cache.get(e);
@@ -114,7 +122,8 @@ function indiceDe(e: Entrada, r: Rotulos): Indice {
     { peso: 3, ws: palavras(dono) },
     { peso: 2, ws: e.k ? e.k.split(' ') : [] },
   ];
-  i = { campos, texto: campos.flatMap((c) => c.ws).join(' ') };
+  for (const c of campos) c.ws = c.ws.map(unica);
+  i = { campos };
   cache.set(e, i);
   return i;
 }
