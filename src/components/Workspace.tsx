@@ -389,7 +389,8 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     add('prefs', 'Aplicativo', 'Abrir preferências', () => setPrefsOpen(true), ['Ctrl', ',']);
     add('conta', 'Aplicativo', 'Conta do GitHub: entrar com token ou ver perfil', () => setAccountOpen(null));
     add('side', 'Aplicativo', 'Mostrar ou esconder a árvore', () => (narrow ? setDrawer((d) => !d) : setSideOpen((s) => !s)), ['Ctrl', 'B']);
-    add('split', 'Aplicativo', 'Abrir em duas colunas', () => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active)), ['Ctrl', '\\']);
+    // duas colunas não existem no celular: o comando não apareceria fazendo nada
+    if (!narrow) add('split', 'Aplicativo', 'Abrir em duas colunas', () => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active)), ['Ctrl', '\\']);
     add('find', 'Arquivo', 'Buscar no arquivo', () => lines && setFindOpen(true), ['Ctrl', 'F']);
     add('goto', 'Arquivo', 'Ir para a linha...', () => setPalette({ initial: ':', origin: null }), ['Ctrl', 'G']);
     add('simbolo', 'Arquivo', 'Ir para símbolo (função, classe, título)...', () => setPalette({ initial: '@', origin: null }), ['Ctrl', 'Shift', 'O']);
@@ -647,11 +648,6 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
         <button type="button" className="ks-icon-btn ks-appbar__home" aria-label="Voltar ao início" data-tip="Voltar ao início" data-tip-key="Alt Home" onClick={onExit}>
           <Icon name="home" />
         </button>
-        {narrow && (
-          <button type="button" className="ks-icon-btn" aria-label="Arquivos" aria-expanded={drawer} data-tip="Arquivos" onClick={() => setDrawer((d) => !d)}>
-            <Icon name="panelLeft" />
-          </button>
-        )}
         <div className="ks-appbar__repo">
           <Icon name="book" />
           <span>{session.owner}/{session.repo}</span>
@@ -665,7 +661,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
             </Presence>
           </span>
         </div>
-        <button
+        {!narrow && <button
           type="button"
           className="ks-appbar__search"
           aria-label="Buscar arquivo ou comando"
@@ -678,12 +674,12 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
           <span>Buscar arquivo ou comando</span>
           <kbd className="ks-kbd">Ctrl</kbd>
           <kbd className="ks-kbd">K</kbd>
-        </button>
+        </button>}
         <div className="ks-appbar__actions">
           {selection && <button type="button" className="ks-icon-btn ks-appear" aria-label="Copiar link das linhas" data-tip="Copiar link das linhas" data-tip-key="Alt+L" onClick={copyLink}><Icon name="link" /></button>}
           {selection && <button type="button" className="ks-icon-btn ks-appear" aria-label="Imagem do trecho" data-tip="Imagem do trecho" data-tip-key="Alt+I" onClick={(e) => { setSnipOrigin(centerOf(e)); openSnippet(); }}><Icon name="image" /></button>}
           {!narrow && (tabs.length > 1 || !!split) && <button type="button" className="ks-icon-btn" aria-label="Duas colunas" aria-pressed={!!split} data-tip="Duas colunas" data-tip-key="Ctrl+\\" onClick={() => setSplit((s) => (s ? null : tabs.find((t) => t.path !== active)?.path ?? active))}><Icon name="columns" /></button>}
-          <button type="button" className="ks-icon-btn" aria-label="Preferências" data-tip="Preferências" data-tip-key="Ctrl+," onClick={(e) => { setPrefsOrigin(centerOf(e)); setPrefsOpen(true); }}><Icon name="settings" /></button>
+          {!narrow && <button type="button" className="ks-icon-btn" aria-label="Preferências" data-tip="Preferências" data-tip-key="Ctrl+," onClick={(e) => { setPrefsOrigin(centerOf(e)); setPrefsOpen(true); }}><Icon name="settings" /></button>}
           <AccountButton compact onClick={(e) => setAccountOpen(e.detail === 0 ? null : centerOf(e))} />
         </div>
       </header>
@@ -705,10 +701,11 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
               <span />
             )}
             <div className="ks-pane__tools">
-              {view !== 'overview' && <button type="button" className="ks-icon-btn" aria-label="Visão geral do repositório" data-tip="Visão geral (README)" onClick={() => setView('overview')}><Icon name="bookOpen" /></button>}
-              {view !== 'file' && view !== 'overview' && active && <button type="button" className="ks-icon-btn" aria-label="Voltar ao arquivo" data-tip="Voltar ao arquivo" onClick={() => setView('file')}><Icon name="file" /></button>}
+              {!narrow && view !== 'overview' && <button type="button" className="ks-icon-btn" aria-label="Visão geral do repositório" data-tip="Visão geral (README)" onClick={() => setView('overview')}><Icon name="bookOpen" /></button>}
+              {!narrow && view !== 'file' && view !== 'overview' && active && <button type="button" className="ks-icon-btn" aria-label="Voltar ao arquivo" data-tip="Voltar ao arquivo" onClick={() => setView('file')}><Icon name="file" /></button>}
               {view === 'file' && active && lines && hasSymbols(lang?.shiki ?? null) && <button type="button" className="ks-icon-btn" aria-label="Ir para símbolo" data-tip="Símbolos" data-tip-key="Ctrl+Shift+O" onClick={() => setPalette({ initial: '@', origin: null })}><Icon name="list" /></button>}
-              <button type="button" className="ks-icon-btn" aria-pressed={view === 'history'} aria-label="Histórico" data-tip="Histórico" data-tip-key="Alt+H" onClick={() => openHistory(active)}><Icon name="history" /></button>
+              {!narrow && <button type="button" className="ks-icon-btn" aria-pressed={view === 'history'} aria-label="Histórico" data-tip="Histórico" data-tip-key="Alt+H" onClick={() => openHistory(active)}><Icon name="history" /></button>}
+              {narrow && view === 'file' && lines && <button type="button" className="ks-icon-btn" aria-pressed={prefs.wrap} aria-label="Quebrar linhas longas" onClick={() => prefsStore.set({ wrap: !prefs.wrap })}><Icon name="wrap" /></button>}
               {active && commits[0] && <button type="button" className="ks-icon-btn" aria-pressed={view === 'diff'} aria-label="Mudanças do último commit" data-tip="Última mudança" data-tip-key="Alt+D" onClick={() => openDiff(commits[0]!, active)}><Icon name="diff" /></button>}
             </div>
           </div>
@@ -738,7 +735,27 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
         )}
       </div>
 
-      <footer className="ks-appstatus">
+      {narrow && (
+        <nav className="ks-mobnav" aria-label="Navegação do repositório">
+          {!online && <span className="ks-mobnav__off" role="status"><Icon name="wifiOff" size={13} /> Offline</span>}
+          {(
+            [
+              { icon: 'folder', nome: 'Arquivos', on: drawer, ir: () => setDrawer((d) => !d) },
+              { icon: 'bookOpen', nome: 'Visão', on: !drawer && view === 'overview', ir: () => { setDrawer(false); setView('overview'); } },
+              { icon: 'code', nome: 'Código', on: !drawer && view === 'file', ir: () => { if (active) { setDrawer(false); setView('file'); } else setDrawer(true); } },
+              { icon: 'search', nome: 'Buscar', on: false, ir: () => { setDrawer(false); setPalette({ initial: '', origin: null }); } },
+              { icon: 'history', nome: 'Histórico', on: !drawer && view === 'history', ir: () => { setDrawer(false); openHistory(active); } },
+              { icon: 'settings', nome: 'Ajustes', on: false, ir: () => { setDrawer(false); setPrefsOrigin(null); setPrefsOpen(true); } },
+            ] as const
+          ).map((b) => (
+            <button key={b.nome} type="button" className="ks-mobnav__btn" aria-pressed={b.on} onClick={b.ir}>
+              <Icon name={b.icon} />
+              <span>{b.nome}</span>
+            </button>
+          ))}
+        </nav>
+      )}
+      {!narrow && <footer className="ks-appstatus">
         <div>
           {!online && <span role="status"><Icon name="wifiOff" /> Offline</span>}
           {lang && <span>{lang.label}</span>}
@@ -747,7 +764,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
         <div>
           <Meter quota={quota} compact />
         </div>
-      </footer>
+      </footer>}
 
       <Presence open={!!palette}>
         {palette && (

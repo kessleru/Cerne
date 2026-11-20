@@ -511,8 +511,14 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
             <button type="button" className="ks-linkbtn" onClick={limparFiltros}>limpar</button>
           </div>
         )}
+        {painel && <div className="ks-facets__fundo" aria-hidden="true" onClick={() => setPainel(false)} />}
         {painel && (
-          <div className="ks-facets" id="painel-filtros" role="group" aria-label="Filtrar">
+          <div className="ks-facets" id="painel-filtros" role="group" aria-label="Filtrar" onKeyDown={(e) => { if (e.key === 'Escape') setPainel(false); }}>
+            {/* no celular os filtros sobem numa folha: título e fechar no topo, resultado no pé */}
+            <div className="ks-facets__topo">
+              <strong>Filtros</strong>
+              <button type="button" className="ks-icon-btn" aria-label="Fechar filtros" onClick={() => setPainel(false)}><Icon name="x" /></button>
+            </div>
             <div className="ks-facets__row">
               <span className="ks-facets__label">Estrelas</span>
               {ESTRELAS.map((n) => (
@@ -549,6 +555,12 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
                 <button type="button" className="ks-linkbtn" onClick={limparFiltros}>limpar filtros</button>
               </div>
             )}
+            <div className="ks-facets__pe">
+              {ativos > 0 && <button type="button" className="ks-linkbtn" onClick={limparFiltros}>limpar</button>}
+              <button type="button" className="key key--accent" onClick={() => setPainel(false)}>
+                Ver {lista.length.toLocaleString('pt-BR')} {lista.length === 1 ? 'projeto' : 'projetos'}
+              </button>
+            </div>
           </div>
         )}
         {emTudo && buscando && !todas ? (

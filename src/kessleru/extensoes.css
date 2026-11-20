@@ -275,7 +275,7 @@ button.ks-appbar__ref { display: inline-flex; align-items: center; gap: var(--sp
   .ks-panes { padding: var(--space-1); }
   .ks-pane--side.is-drawer {
     position: fixed;
-    inset: 44px auto 24px 0;
+    inset: 44px auto var(--mobnav-h) 0;
     z-index: 40;
     width: min(86vw, 320px);
     max-width: none;
@@ -285,8 +285,22 @@ button.ks-appbar__ref { display: inline-flex; align-items: center; gap: var(--sp
     transition: translate var(--dur-ui) var(--ease-out), visibility 0s linear var(--dur-ui);
   }
   .ks-pane--side.is-drawer.is-open { translate: 0; visibility: visible; transition: translate var(--dur-ui) var(--ease-out); }
-  .ks-drawer-backdrop { position: fixed; inset: 44px 0 24px; z-index: 39; background: color-mix(in srgb, var(--ctp-crust) 45%, transparent); }
-  .ks-appstatus > div:last-child > span:not(.ks-meter) { display: none; }
+  .ks-drawer-backdrop { position: fixed; inset: 44px 0 var(--mobnav-h); z-index: 39; background: color-mix(in srgb, var(--ctp-crust) 45%, transparent); }
+  .ks-app { --mobnav-h: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .ks-pane__tools { gap: var(--space-1); }
+  .ks-pane__tools .ks-icon-btn { width: 36px; height: 32px; }
+  .ks-appbar__repo > .ks-icon { display: none; }
+  .ks-appbar__repo > span:first-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* barra de baixo: o que mais se usa no celular, ao alcance do polegar */
+  .ks-mobnav { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding-bottom: env(safe-area-inset-bottom, 0px); border-top: 1px solid var(--ctp-surface-0); background: var(--ctp-mantle); }
+  .ks-mobnav__btn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; height: 56px; padding: 0; border: 0; background: none; color: var(--ctp-subtext-0); font: 500 10px/12px var(--font-mono); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color var(--dur-fast) var(--ease-out); }
+  .ks-mobnav__btn > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ks-mobnav__btn .ks-icon { width: 20px; height: 20px; }
+  .ks-mobnav__btn[aria-pressed='true'] { color: var(--ctp-accent); }
+  .ks-mobnav__btn[aria-pressed='true']::before { content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; border-radius: 0 0 var(--radius-full) var(--radius-full); background: var(--ctp-accent); }
+  .ks-mobnav__btn:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: -4px; border-radius: var(--radius-md); }
+  .ks-mobnav__off { position: absolute; bottom: 100%; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: var(--space-1); padding: 2px; border-top: 1px solid var(--ctp-surface-0); background: var(--ctp-surface-0); color: var(--ctp-text); font: 500 11px/16px var(--font-mono); }
+  .ks-mobnav__off .ks-icon { color: var(--ctp-peach); }
   .ks-findbar { right: var(--space-2); }
 }
 
@@ -899,3 +913,8 @@ button.ks-hidden__name:focus-visible { outline: 2px solid var(--ctp-accent); out
 .ks-hidden__act:focus-visible { outline: 2px solid var(--ctp-accent); outline-offset: 1px; }
 .ks-hidden__vazio { padding: var(--space-1) var(--space-3) var(--space-2); color: var(--ctp-meta); font: 400 12px/18px var(--font-sans); }
 :root[data-motion='reduce'] .ks-hidden__list { animation: none; }
+
+/* tela de toque: atalhos de teclado (Ctrl, Alt) não servem e só ocupam espaço */
+@media (pointer: coarse) {
+  .ks-palette__hint:not(.ks-palette__symline) { display: none; }
+}
