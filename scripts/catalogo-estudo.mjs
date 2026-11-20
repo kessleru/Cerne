@@ -301,7 +301,8 @@ const DOMINIOS = [
   ['Blog', /\bblog\b/i, /(blog post|read (more|it) (on|in) (my|the) blog|veja no (meu )?blog)/i],
   ['Notícias', /(news ?(app|api|aggregator|portal|website|feed|reader)|not[íi]cias|\brss\b|hacker news)/i],
   ['Fórum e perguntas', /(\bforum\b|f[óo]rum|q&a|stack ?overflow clone|reddit clone|discussion board)/i],
-  ['Tarefas', /(\btodos?\b|to-?do|task (manager|management|tracker|app|list|board)|gerenciador de tarefas|lista de tarefas|kanban|trello)/i, /(task (queue|runner|scheduler)|background task|scheduled task)/i],
+  // "todo/todos" sozinho é português ("para todos"): precisa de contexto de lista de tarefas
+  ['Tarefas', /(\btodos?[- ]?(app|list|api|application|manager|cli|mvc|microservice|service|backend)|\btodolist|\btodoapp|todoist|\bto-do\b|task ?(manager|management|tracker|app|list|board|api)|\btasks? (app|api|cli)\b|gerenciador de tarefas|lista de tarefas|\btarefas\b|kanban|trello)/i, /(task (queue|runner|scheduler)|background task|scheduled task)/i],
   ['Notas', /(note[- ]?taking|\bnotes? app|notepad|bloco de notas|anota[çc][õo]es|notion clone|markdown notes|second brain|evernote|obsidian)/i, /(release notes|lecture notes|my notes|course notes|study notes|learning notes|anota[çc][õo]es de estudo)/i],
   ['Chat', /(chat[- ]?(app|application|room|system|server|platform|ui|api|backend|website)|(live|group|real[- ]?time|private|anonymous) chat|chatroom|messag(ing|enger) (app|application|platform)|whatsapp clone|telegram clone|discord clone|bate[- ]papo|chat em tempo real|mensagens instant)/i, /(chat ?completions?|chatgpt|chat ?bot|\bllm\b|openai)/i],
   ['Rede social', /(social (network|media)|rede social|instagram clone|facebook clone|twitter clone|threads clone|linkedin clone|\bx clone\b)/i],
