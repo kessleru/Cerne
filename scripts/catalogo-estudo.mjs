@@ -695,7 +695,9 @@ await Promise.all(
 console.log();
 
 const antigos = SOMAR ? lerLista() : [];
-const ja = new Set(antigos.map((x) => x.repo.toLowerCase()));
+// cópias do mesmo exercício de curso que já foram tiradas não voltam
+const copiasDeCurso = JSON.parse(fs.readFileSync(new URL('./copias-de-curso.json', import.meta.url), 'utf8'));
+const ja = new Set([...antigos.map((x) => x.repo), ...copiasDeCurso].map((r) => r.toLowerCase()));
 
 // no máximo POR_PESSOA por pessoa: variedade de autores (contando os que já estão na lista)
 const porDono = new Map();

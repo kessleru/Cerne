@@ -22,6 +22,7 @@ import { Account } from './Account';
 import { findReadme, Overview } from './Overview';
 import { AccountButton } from './Avatar';
 import { abrirAbaExplorar, abrirEstudarCom } from './Explore';
+import { salvos } from '../state/salvos';
 import { Kbd, Meter, PaneState, Presence, Splitter, ToastHost, toast, useLoadingGate } from './parts';
 import { SnippetDialog } from './SnippetDialog';
 import { Select } from './Select';
@@ -80,6 +81,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
 
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [active, setActive] = useState<string | null>(null);
+  const listaSalvos = salvos.use(); // a paleta mostra "Salvar" ou "Tirar dos salvos"
   const [split, setSplit] = useState<string | null>(null);
   const [sels, setSels] = useState<Record<string, LineRange | null>>({});
   const [view, setView] = useState<View>(session.path ? 'file' : 'overview');
@@ -388,6 +390,9 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     add('close', 'Arquivo', 'Fechar a aba atual', () => active && closeTab(active), ['Ctrl', 'W']);
     add('ref', 'Repositório', 'Trocar ramo, tag ou commit...', () => setRefOpen(true));
     add('exit', 'Repositório', 'Voltar ao início', onExit, ['Alt', 'Home']);
+    const slugAtual = `${session.owner}/${session.repo}`;
+    add('salvar', 'Repositório', listaSalvos.some((x) => x.repo.toLowerCase() === slugAtual.toLowerCase()) ? 'Tirar dos salvos' : 'Salvar repositório', () => salvos.alternar({ repo: slugAtual, nota: info?.description ?? undefined, lang: info?.language ?? undefined }));
+    add('salvos', 'Explorar', 'Repositórios salvos', () => { abrirAbaExplorar('salvos'); onExit(); });
     add('visao', 'Repositório', 'Visão geral do repositório (README e estrutura)', () => setView('overview'));
     add('estudar', 'Explorar', 'Trilhas de estudo: repositórios para aprender', () => { abrirAbaExplorar('estudar'); onExit(); });
     add('famosos', 'Explorar', 'Repositórios famosos', () => { abrirAbaExplorar('famosos'); onExit(); });
@@ -406,7 +411,7 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     add('demo-erro', 'Demonstrar estado', 'Demonstrar estado: erro', () => runDemo('erro'));
     add('demo-cota', 'Demonstrar estado', 'Demonstrar estado: cota esgotada', () => runDemo('cota'));
     return c;
-  }, [prefs, narrow, tabs, active, lines, commits, editorThemes, copyLink, openSnippet, openHistory, openDiff, pinTab, closeTab, onExit, setPref, runDemo]);
+  }, [prefs, narrow, tabs, active, lines, commits, editorThemes, copyLink, openSnippet, openHistory, openDiff, pinTab, closeTab, onExit, setPref, runDemo, info, session.owner, session.repo, listaSalvos]);
 
   // ---------- teclado ----------
   useEffect(() => {

@@ -10,7 +10,7 @@ import { milhar, relativo } from '../lib/tempo';
 import type { IconPack } from '../state/prefs';
 import { estudados } from '../state/estudo';
 import { MarkdownView } from '../viewers/data';
-import { OwnerAvatar } from './Explore';
+import { BotaoSalvar, OwnerAvatar } from './Explore';
 import { Icon, type IconName } from './Icon';
 import { CommitLoader } from './CommitLoader';
 
@@ -224,6 +224,7 @@ function Hero({ owner, repo, info, entrada, readme, pack, onPath, entries, onEst
           <button type="button" className="key key--accent" onClick={() => onPath(inicio)}><Icon name="code" size={14} /> Ver o código</button>
         )}
         <div className="ks-ov__minor">
+          <BotaoSalvar repo={slug} nota={info?.description ?? entrada?.nota ?? undefined} lang={lang ?? undefined} grande />
           {entrada && (
             <button type="button" className={`ks-icon-btn${feito ? ' is-on' : ''}`} aria-pressed={feito} aria-label={feito ? 'Desmarcar estudado' : 'Marcar como estudado'} data-tip={feito ? 'Estudado' : 'Marcar como estudado'} onClick={() => estudados.alternar(entrada.repo)}>
               <Icon name="check" />

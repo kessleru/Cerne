@@ -230,3 +230,13 @@
 .ks-vazio p { margin: 0; }
 .ks-vazio__acoes { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--space-2); }
 :root[data-motion='reduce'] .ks-busca { animation: none; }
+
+/* ---------- salvos ---------- */
+.ks-salvar.is-on { color: var(--ctp-accent); }
+.ks-salvar.is-on .ks-icon { fill: currentColor; }
+.ks-explore__n { min-width: 18px; padding: 1px 6px; border-radius: var(--radius-full); background: var(--ctp-surface-0); color: var(--ctp-subtext-1); font: 500 11px/16px var(--font-mono); text-align: center; }
+.ks-salvos { display: grid; gap: var(--space-3); text-align: left; }
+.ks-salvos__busca { max-width: 420px; }
+.ks-salvos__vazio { display: grid; justify-items: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); text-align: center; }
+.ks-salvos__vazio p { margin: 0; font: 500 16px/24px var(--font-mono); color: var(--ctp-text); }
+.ks-salvos__vazio .ks-salvos__dica { max-width: 420px; margin-bottom: var(--space-2); font: 400 14px/20px var(--font-sans); color: var(--ctp-subtext-0); }

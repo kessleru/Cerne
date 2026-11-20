@@ -9,12 +9,14 @@ import { lerAvatar } from '../data/github/conta';
 import { getToken } from '../state/token';
 import { usePrefs } from '../state/prefs';
 import { estudados } from '../state/estudo';
+import { salvos } from '../state/salvos';
+import { relativo } from '../lib/tempo';
 import { Icon, type IconName } from './Icon';
 import { Select } from './Select';
 
 // Explorar: "Para você" (recentes, seus repositórios), trilhas de estudo e repositórios famosos.
 
-type Aba = 'voce' | 'estudar' | 'famosos';
+type Aba = 'voce' | 'estudar' | 'famosos' | 'salvos';
 const ABA_KEY = 'cerne:explorar';
 const TRILHA_KEY = 'cerne:trilha';
 const AREA_KEY = 'cerne:area';
@@ -158,10 +160,12 @@ export function Explore({ paraVoce, onOpen, padrao = 'voce' }: { paraVoce: React
     setAba(a);
     gravar(ABA_KEY, a);
   };
+  const qtdSalvos = salvos.use().length;
   const abas: { id: Aba; label: string; icon: IconName }[] = [
     { id: 'voce', label: 'Para você', icon: 'home' },
     { id: 'estudar', label: 'Estudar', icon: 'graduation' },
     { id: 'famosos', label: 'Famosos', icon: 'star' },
+    { id: 'salvos', label: 'Salvos', icon: 'bookmark' },
   ];
   return (
     <section className={`ks-explore is-${aba}`} aria-label="Explorar" id="explorar">
@@ -184,11 +188,12 @@ export function Explore({ paraVoce, onOpen, padrao = 'voce' }: { paraVoce: React
           >
             <Icon name={a.icon} size={15} />
             {a.label}
+            {a.id === 'salvos' && qtdSalvos > 0 && <span className="ks-explore__n">{qtdSalvos}</span>}
           </button>
         ))}
       </div>
       <div className="ks-explore__panel" role="tabpanel" id={`ex-painel-${aba}`} aria-labelledby={`ex-tab-${aba}`}>
-        {aba === 'voce' ? paraVoce : aba === 'estudar' ? <Estudar onOpen={onOpen} /> : <Famosos onOpen={onOpen} />}
+        {aba === 'voce' ? paraVoce : aba === 'estudar' ? <Estudar onOpen={onOpen} /> : aba === 'salvos' ? <Salvos onOpen={onOpen} irPara={escolher} /> : <Famosos onOpen={onOpen} />}
       </div>
     </section>
   );
@@ -679,6 +684,7 @@ function RepoCard({ r, feito, onOpen, busca, comArea }: { r: Entrada; feito: boo
         </span>
       </button>
       <div className="ks-repocard__side">
+        <BotaoSalvar repo={r.repo} nota={r.nota} lang={r.lang} />
         <button type="button" className={`ks-icon-btn ks-repocard__check${feito ? ' is-on' : ''}`} aria-pressed={feito} aria-label={feito ? 'Desmarcar estudado' : 'Marcar como estudado'} data-tip={feito ? 'Estudado' : 'Marcar como estudado'} onClick={() => alternarFeito(r.repo)}>
           <Icon name="check" size={15} />
         </button>
@@ -687,6 +693,83 @@ function RepoCard({ r, feito, onOpen, busca, comArea }: { r: Entrada; feito: boo
         </a>
       </div>
     </li>
+  );
+}
+
+// ---------- salvos ----------
+/** Marcador: salva ou tira o repositório dos salvos. */
+export function BotaoSalvar({ repo, nota, lang, grande = false }: { repo: string; nota?: string; lang?: string; grande?: boolean }) {
+  const lista = salvos.use();
+  const on = lista.some((s) => s.repo.toLowerCase() === repo.toLowerCase());
+  return (
+    <button
+      type="button"
+      className={`ks-icon-btn ks-salvar${on ? ' is-on' : ''}`}
+      aria-pressed={on}
+      aria-label={on ? `Tirar ${repo} dos salvos` : `Salvar ${repo}`}
+      data-tip={on ? 'Salvo' : 'Salvar'}
+      onClick={() => salvos.alternar({ repo, nota, lang })}
+    >
+      <Icon name="bookmark" size={grande ? 16 : 15} />
+    </button>
+  );
+}
+
+function Salvos({ onOpen, irPara }: { onOpen: (l: RepoLink) => void; irPara: (a: Aba) => void }) {
+  const lista = salvos.use();
+  const { icons } = usePrefs();
+  const [q, setQ] = useState('');
+  const visiveis = useMemo(() => {
+    const termo = normalizar(q.trim());
+    return termo ? lista.filter((s) => normalizar(`${s.repo} ${s.nota ?? ''} ${s.lang ?? ''}`).includes(termo)) : lista;
+  }, [lista, q]);
+  if (!lista.length)
+    return (
+      <div className="ks-salvos__vazio">
+        <span className="ks-selo" style={{ width: 56, height: 56, '--c': 'var(--ctp-accent)' } as React.CSSProperties} aria-hidden="true"><Icon name="bookmark" size={26} /></span>
+        <p>Nada salvo ainda.</p>
+        <p className="ks-salvos__dica">Use o marcador no topo de um repositório ou nos cartões do Estudar para guardar o que quer ler depois.</p>
+        <button type="button" className="key" onClick={() => irPara('estudar')}>Ir para o Estudar</button>
+      </div>
+    );
+  return (
+    <div className="ks-salvos">
+      {lista.length > 6 && (
+        <span className="ks-trail__search ks-salvos__busca">
+          <Icon name="search" size={14} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nos salvos" aria-label="Buscar nos salvos" />
+        </span>
+      )}
+      <ul className="ks-repogrid">
+        {visiveis.map((s) => {
+          const [dono, nome] = s.repo.split('/') as [string, string];
+          return (
+            <li key={s.repo} className="ks-repocard">
+              <button type="button" className="ks-repocard__main" onClick={() => onOpen({ owner: dono, repo: nome })} aria-label={`Abrir ${s.repo}`}>
+                <OwnerAvatar repo={s.repo} size={36} />
+                <span className="ks-repocard__body">
+                  <span className="ks-repocard__name"><span>{dono}/</span>{nome}</span>
+                  {s.nota && <span className="ks-repocard__nota">{s.nota}</span>}
+                  <span className="ks-repocard__meta">
+                    {s.lang && <span className="ks-chip"><FileIcon pack={icons} path={`x.${extDaLinguagem(s.lang)}`} className="ks-chip__icon" />{s.lang}</span>}
+                    <span className="ks-chip ks-chip--stars"><Icon name="bookmark" size={11} />salvo {relativo(s.em)}</span>
+                  </span>
+                </span>
+              </button>
+              <div className="ks-repocard__side">
+                <button type="button" className="ks-icon-btn" aria-label={`Tirar ${s.repo} dos salvos`} data-tip="Tirar dos salvos" onClick={() => salvos.remover(s.repo)}>
+                  <Icon name="x" size={15} />
+                </button>
+                <a className="ks-icon-btn" href={`https://github.com/${s.repo}`} target="_blank" rel="noopener noreferrer" aria-label={`${s.repo} no GitHub`} data-tip="No GitHub">
+                  <Icon name="external" size={14} />
+                </a>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {!visiveis.length && <p className="ks-explore__vazio">Nada nos salvos com "{q.trim()}".</p>}
+    </div>
   );
 }
 
