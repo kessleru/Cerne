@@ -2,7 +2,7 @@
 // Dados do repositório, o README renderizado (é ele que contextualiza o projeto) e a estrutura.
 import { useEffect, useMemo, useState } from 'react';
 import { arquivoDeEntrada } from '../lib/entrada';
-import { AREAS, entradaDe, extDaLinguagem, type Entrada } from '../data/catalogo';
+import { AREAS, entradaDe, extDaLinguagem, useArea, type Area, type Entrada } from '../data/catalogo';
 import type { RepoInfo, RepoSource, TreeEntry } from '../data/types';
 import { FileIcon } from '../icons/FileIcon';
 import { langOf } from '../lib/lang';
@@ -25,6 +25,12 @@ type Props = {
   editorTheme: string | null;
   /** abre um arquivo (ou revela uma pasta) */
   onPath: (path: string) => void;
+  /** volta ao Estudar, nesta área, com um filtro ligado */
+  onEstudar?: (area: Area, campo?: 'dominio' | 'stack', valor?: string) => void;
+  /** abre outro repositório (projetos parecidos) */
+  onAbrirRepo?: (slug: string) => void;
+  /** a árvore não carregou: o README também não vai carregar */
+  erroArvore?: string | null;
 };
 
 /** README da pasta (README.md, readme.md, README, README.rst...). */
@@ -70,7 +76,9 @@ export function Overview(p: Props) {
               </button>
             )}
           </header>
-          {!p.entries || (readme && !texto) ? (
+          {!p.entries && p.erroArvore ? (
+            <p className="ks-ov__empty">Não deu para ler os arquivos agora. {p.erroArvore}</p>
+          ) : !p.entries || (readme && !texto) ? (
             <div className="ks-ov__loading"><CommitLoader size="sm" label="Carregando o README" /></div>
           ) : !readme || !texto?.text ? (
             <p className="ks-ov__empty">Este repositório não tem README. A estrutura ao lado mostra por onde começar.</p>
@@ -83,6 +91,7 @@ export function Overview(p: Props) {
           )}
         </article>
         <aside className="ks-ov__side">
+          {entrada?.area && p.onAbrirRepo && <Parecidos entrada={entrada} pack={p.pack} onAbrir={p.onAbrirRepo} />}
           {p.entries && <Estrutura entries={p.entries} pack={p.pack} onPath={p.onPath} />}
         </aside>
       </div>
@@ -90,8 +99,70 @@ export function Overview(p: Props) {
   );
 }
 
+// ---------- etiquetas e projetos parecidos ----------
+/** Etiqueta que, com onClick, vira um atalho para o Estudar filtrado. */
+function Etiqueta({ texto, dica, onClick, fraca = false }: { texto: string; dica: string; onClick?: () => void; fraca?: boolean }) {
+  const cls = `ks-ov__tag${fraca ? ' is-fraca' : ''}`;
+  if (!onClick) return <span className={cls}>{texto}</span>;
+  return (
+    <button type="button" className={`${cls} is-link`} data-tip={dica} onClick={onClick}>
+      {texto}
+    </button>
+  );
+}
+
+/** Outros projetos do Estudar para comparar: mesmo assunto, stack e temas parecidos. */
+function Parecidos({ entrada, pack, onAbrir }: { entrada: Entrada; pack: IconPack; onAbrir: (slug: string) => void }) {
+  const area = useArea(entrada.area ?? null);
+  const lista = useMemo(() => {
+    if (!area) return [];
+    const stack = new Set(entrada.stack ?? []);
+    const temas = new Set(entrada.temas);
+    return area.repos
+      .filter((e) => e.repo !== entrada.repo)
+      .map((e) => {
+        let p = 0;
+        if (entrada.dominio && e.dominio === entrada.dominio) p += 5;
+        for (const x of e.stack ?? []) if (stack.has(x)) p += 1.5;
+        for (const x of e.temas) if (temas.has(x)) p += 1;
+        if (e.lang === entrada.lang) p += 1;
+        return { e, p: p + (e.readme ?? 0) / 40 };
+      })
+      .filter((x) => x.p >= 3)
+      .sort((a, b) => b.p - a.p)
+      .slice(0, 5)
+      .map((x) => x.e);
+  }, [area, entrada]);
+  if (!lista.length) return null;
+  return (
+    <section className="ks-ov__card ks-ov__parecidos" aria-label="Parecidos para estudar">
+      <header className="ks-ov__cardhead">
+        <Icon name="graduation" size={14} />
+        <span>Parecidos para estudar</span>
+      </header>
+      <ul>
+        {lista.map((e) => {
+          const [dono, nome] = e.repo.split('/');
+          return (
+            <li key={e.repo}>
+              <button type="button" onClick={() => onAbrir(e.repo)}>
+                <OwnerAvatar repo={e.repo} size={28} />
+                <span className="ks-ov__pnome">
+                  <span><em>{dono}/</em>{nome}</span>
+                  <span className="ks-ov__pnota">{e.nota}</span>
+                </span>
+                <FileIcon pack={pack} path={`x.${extDaLinguagem(e.lang)}`} className="ks-chip__icon" />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 // ---------- topo ----------
-function Hero({ owner, repo, info, entrada, readme, pack, onPath, entries }: Props & { entrada: Entrada | null; readme: string | null }) {
+function Hero({ owner, repo, info, entrada, readme, pack, onPath, entries, onEstudar }: Props & { entrada: Entrada | null; readme: string | null }) {
   const feitos = estudados.use();
   const slug = `${owner}/${repo}`;
   const feito = feitos.has(entrada?.repo ?? slug);
@@ -125,10 +196,25 @@ function Hero({ owner, repo, info, entrada, readme, pack, onPath, entries }: Pro
           {stats.map((s) => (
             <li key={s.tip} data-tip={s.tip}><Icon name={s.icon} size={14} />{s.texto}</li>
           ))}
-          {entrada?.area && <li className="ks-ov__nivel is-a">{AREAS.find((a) => a.id === entrada.area)?.titulo}</li>}
-          {entrada?.dominio && <li className="ks-ov__nivel is-a">{entrada.dominio}</li>}
+          {entrada?.area && (
+            <li>
+              <Etiqueta texto={AREAS.find((a) => a.id === entrada.area)?.titulo ?? ''} dica="Ver projetos desta área" onClick={onEstudar && (() => onEstudar(entrada.area!))} />
+            </li>
+          )}
+          {entrada?.area && entrada.dominio && (
+            <li>
+              <Etiqueta texto={entrada.dominio} dica={`Outros projetos de ${entrada.dominio}`} onClick={onEstudar && (() => onEstudar(entrada.area!, 'dominio', entrada.dominio))} />
+            </li>
+          )}
           {info?.archived && <li className="ks-ov__arch">arquivado</li>}
         </ul>
+        {entrada?.area && (entrada.stack?.length ?? 0) > 0 && (
+          <div className="ks-ov__stack" aria-label="Stack">
+            {entrada.stack!.slice(0, 6).map((x) => (
+              <Etiqueta key={x} texto={x} fraca dica={`Outros projetos com ${x}`} onClick={onEstudar && (() => onEstudar(entrada.area!, 'stack', x))} />
+            ))}
+          </div>
+        )}
         {info?.topics && info.topics.length > 0 && (
           <div className="ks-ov__topics">{info.topics.slice(0, 8).map((t) => <span key={t}>{t}</span>)}</div>
         )}

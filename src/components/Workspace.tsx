@@ -21,7 +21,7 @@ import { Preferences } from './Preferences';
 import { Account } from './Account';
 import { findReadme, Overview } from './Overview';
 import { AccountButton } from './Avatar';
-import { abrirAbaExplorar } from './Explore';
+import { abrirAbaExplorar, abrirEstudarCom } from './Explore';
 import { Kbd, Meter, PaneState, Presence, Splitter, ToastHost, toast, useLoadingGate } from './parts';
 import { SnippetDialog } from './SnippetDialog';
 import { Select } from './Select';
@@ -480,6 +480,9 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
         pack={prefs.icons}
         editorTheme={effectiveEditorTheme(prefs)}
         onPath={openPath}
+        erroArvore={treeError}
+        onEstudar={(area, campo, valor) => { abrirEstudarCom(area, campo, valor); onExit(); }}
+        onAbrirRepo={onOpen ? (slug) => { const [owner, repo] = slug.split('/') as [string, string]; onOpen({ owner, repo }); } : undefined}
       />
     );
   else if (demo === 'erro')

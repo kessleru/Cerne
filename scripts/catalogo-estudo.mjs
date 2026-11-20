@@ -286,11 +286,64 @@ const TEMAS = [
   ['terminal', /(\bcli\b|command[- ]line|linha de comando|\btui\b|terminal)/i, ['ferramentas', 'sistemas']],
 ];
 
-// Assunto do projeto, pelo nome, descrição e tópicos. A primeira regra que casar vale (as mais específicas primeiro).
+// Assunto do projeto. Cada assunto tem uma regra "forte" e, às vezes, uma "contra" (que anula: "health check" não é
+// Saúde, "banco de dados" não é banco). Pontua no nome e na descrição (3) e no começo do README (2); vence a maior
+// pontuação, a partir de 2. Empate: o que vem primeiro na lista.
 const DOMINIOS = [
+  ['Livraria', /(book ?store|bookshop|livraria|\bbooks? (api|app|store|catalog|management|tracker|review|shop)|book (catalog|management|tracker|review|reading)|\blivros?\b|\bebooks?\b|reading list|goodreads)/i, /(order ?book|notebook|playbook|cookbook|handbook|runbook|guestbook|address ?book|face ?book)/i],
+  ['Biblioteca', /(library (management|system|app)|sistema de biblioteca|gerenciamento de biblioteca|gest[ãa]o de biblioteca|biblioteca (digital|virtual|escolar|municipal|online)|book lending|empr[ée]stimos? de livros|acervo)/i],
+  ['Criptomoedas', /(cryptocurrenc|bitcoin|blockchain|ethereum|\bweb3\b|solidity|\bnfts?\b|\bdefi\b|criptomoeda|crypto ?(wallet|exchange|tracker|price|trading|portfolio|dashboard|currency))/i, /(password manager|gerenciador de senhas|encrypt)/i],
+  ['E-commerce', /(e-?commerce|ecomerece|online (shop|store)|\bshopping\b|\bcart\b|carrinho|\bloja\b|marketplace|storefront|amazon clone|shopify|product catalog|cat[áa]logo de produtos)/i],
+  ['Bancos e pagamentos', /(\bbank(ing)? (app|api|system|account|management|simulator|service)|internet banking|digital bank|banco digital|conta banc[áa]ria|\bwallet\b|carteira digital|\bpayments?\b|pagamentos?|picpay|\bpix\b|transfer[êe]ncias?|stripe|mercado ?pago|\bcheckout\b)/i, /(banco de (dados|perguntas|quest)|data ?bank|memory bank|crypto ?wallet|web3|folha de pagamento|payroll)/i],
+  ['Imóveis', /(real estate|im[óo]veis|imobili[áa]ri|\bpropert(y|ies) (listing|management|rental)|\bhouses?\b (price|rent|sale|listing)|house hunting|aluguel de (casas|apartamentos))/i],
+  ['Finanças pessoais', /(\bexpenses?\b|despesas?|\bgastos\b|personal finance|finan[çc]as pessoais|\bbudget|or[çc]amento|money (tracker|manager)|controle financeiro|investiment|investment|stock (price|market|portfolio))/i],
+  ['Leilão', /(auction|leil[ãa]o)/i],
+  ['Blog', /\bblog\b/i, /(blog post|read (more|it) (on|in) (my|the) blog|veja no (meu )?blog)/i],
+  ['Notícias', /(news ?(app|api|aggregator|portal|website|feed|reader)|not[íi]cias|\brss\b|hacker news)/i],
+  ['Fórum e perguntas', /(\bforum\b|f[óo]rum|q&a|stack ?overflow clone|reddit clone|discussion board)/i],
+  ['Tarefas', /(\btodos?\b|to-?do|task (manager|management|tracker|app|list|board)|gerenciador de tarefas|lista de tarefas|kanban|trello)/i, /(task (queue|runner|scheduler)|background task|scheduled task)/i],
+  ['Notas', /(note[- ]?taking|\bnotes? app|notepad|bloco de notas|anota[çc][õo]es|notion clone|markdown notes|second brain|evernote|obsidian)/i, /(release notes|lecture notes|my notes|course notes|study notes|learning notes|anota[çc][õo]es de estudo)/i],
+  ['Chat', /(chat[- ]?(app|application|room|system|server|platform|ui|api|backend|website)|(live|group|real[- ]?time|private|anonymous) chat|chatroom|messag(ing|enger) (app|application|platform)|whatsapp clone|telegram clone|discord clone|bate[- ]papo|chat em tempo real|mensagens instant)/i, /(chat ?completions?|chatgpt|chat ?bot|\bllm\b|openai)/i],
+  ['Rede social', /(social (network|media)|rede social|instagram clone|facebook clone|twitter clone|threads clone|linkedin clone|\bx clone\b)/i],
+  ['Encurtador de URL', /(url shortener|link shortener|shortener|encurtador)/i],
+  ['Reservas e hotéis', /(\bhotel|booking (app|system|api|platform|website)|reservation|reservas?\b|airbnb|accommodation|hospedagem|pousada)/i],
+  ['Agendamentos', /(appointment|agendamento|scheduling (app|system)|booking calendar|barbe(r|ar)ia|barber|sal[ãa]o de beleza|consult[óo]rio)/i],
+  ['Escola e cursos', /(school (management|system|app)|student (management|portal|system|information)|gest[ãa]o escolar|\blms\b|learning management|online courses?|plataforma de cursos|cursos online|matr[íi]cula|university (management|portal)|\be-?learning\b)/i, /(summer school|educational purpose|for educational|fins educacionais)/i],
+  ['Quiz', /(\bquiz|trivia|flashcards?|perguntas e respostas)/i],
+  ['Filmes e séries', /(\bmovies?\b|\bfilmes?\b|cinema|netflix|\btmdb\b|\bimdb\b|tv (shows?|series)|s[ée]ries de tv|\banime\b)/i],
+  ['Música', /(\bmusic|m[úu]sica|spotify|playlist|\bsongs?\b|podcast|lyrics|\bradio\b)/i, /(radio (signal|frequency|modulation)|software defined radio|\bsdr\b)/i],
+  ['Vídeos e streaming', /(video (streaming|platform|sharing|player|app|call|conferenc)|youtube clone|twitch|live ?stream|streaming (platform|app|de v[íi]deo)|v[íi]deo ?chamada)/i],
+  ['Comida e receitas', /(\brecipes?\b|\breceitas?\b|food (delivery|ordering|app|order|recipe)|\bfood\b|restaurant|restaurante|ifood|lanchonete|pizzaria|card[áa]pio|\bmeals?\b|cooking|culin[áa]ri)/i, /(progressive delivery|continuous delivery|training recipe|recipe for (fine|train)|\brecipes? (to|for) (train|fine|build)|fine-?tun|(prompt|agent|automation|crewai|ai) recipes|recipes (for|to) (ai|agents?|automat))/i],
+  ['Saúde', /(clinic|cl[íi]nica|\bhospitals?\b|healthcare|health (app|tracker|management|record|care)|sa[úu]de|medical|m[ée]dic[oa]s?\b|pharmacy|farm[áa]cia|doctor|patients?\b|pacientes?|telemedicin|disease|diagnos)/i, /(health ?check)/i],
+  ['Academia', /(\bgym\b|fitness|workout|\btreinos?\b|exercise tracker|personal trainer)/i],
+  ['Pets', /(\bpets?\b|petshop|veterin|pet adoption|ado[çc][ãa]o de (animais|pets|c[ãa]es|gatos))/i],
+  ['Estacionamento', /(parking|estacionamento)/i],
+  ['Aluguel de carros', /(car rental|aluguel de (carros|ve[íi]culos)|rent a car|locadora de ve[íi]culos)/i],
+  ['Transporte', /(ride[- ]?shar|uber clone|\btaxi\b|transporte|public transport|bus (tracker|app|schedule)|logistic|log[íi]stica|delivery tracking|\bfleet\b|\bfrota\b|rastreamento de entregas)/i],
+  ['Viagens', /(travel (app|agency|planner|booking|guide|website|platform)|trip planner|viage(m|ns)|turismo|tourism|\bflights?\b (booking|search|tracker)|passagens a[ée]reas|itinerar)/i, /(traveling salesman|space travel)/i],
+  ['Clima', /(weather|\bclima\b|previs[ãa]o do tempo|meteorolog)/i],
+  ['Estoque', /(inventory|estoque|warehouse|almoxarifado|stock management|controle de estoque)/i],
+  ['Vagas e RH', /(job (board|portal|search|finder|listing|tracker)|vagas de emprego|\bvagas\b|recruit|human resources|recursos humanos|employee management|gest[ãa]o de funcion|payroll|folha de pagamento)/i],
+  ['CRM e vendas', /(\bcrm\b|sales (management|dashboard|pipeline)|\bvendas\b|invoic|nota fiscal|\bnf-?e\b|\bpdv\b|point of sale|ponto de venda|\berp\b)/i],
+  ['Suporte', /(help ?desk|support tickets?|chamados|ticketing system|service desk)/i],
+  ['Eventos', /(event (management|booking|app|platform|ticket|planner)|\beventos?\b(?! de dom)|ticket (booking|sales)|ingressos?|conference app)/i],
+  ['Votação', /(voting|vota[çc][ãa]o|\bpolls?\b|enquete|election)/i],
+  ['Esportes', /(football|futebol|soccer|\bnba\b|\bnfl\b|fantasy (league|football)|\bsports?\b|esportes?|\bfifa\b)/i],
+  ['Pokémon', /(pok[ée]mon|pok[ée]dex)/i],
+  ['Mapas e localização', /(geolocat|geolocaliza|openstreetmap|leaflet|mapbox|google maps|\bgps\b|\bmaps? (app|api)\b)/i],
+  ['Arquivos e fotos', /(file (upload|sharing|storage|manager)|upload de arquivos|photo (gallery|sharing|editor|app)|image (gallery|upload|hosting|editor)|galeria de fotos|drive clone|dropbox|cloud storage)/i],
+  ['Portfólio', /(portfolio|portf[óo]lio)/i],
+  ['Casa e IoT', /(\biot\b|smart home|casa inteligente|home automation|arduino|esp32|\bmqtt\b)/i],
+  ['Jogos clássicos', /\b(tetris|snake|pong|chess|xadrez|sudoku|minesweeper|campo minado|tic[- ]tac[- ]toe|jogo da velha|breakout|flappy|space invaders|2048|wordle|pac-?man|solitaire|paci[êe]ncia)\b/i],
+];
+
+// Regras de antes (mais largas). Servem só para a conferência: um assunto antigo que casava com elas veio
+// do nome ou da descrição, não dos tópicos, e então é refeito pelas regras novas.
+const DOMINIO_VELHO = Object.fromEntries([
   ['Livraria', /(book ?store|bookshop|livraria|\bbooks?\b|livros?|ebooks?)/i],
   ['Biblioteca', /(library (management|system|app)|sistema de biblioteca|gerenciamento de biblioteca|gest[ãa]o de biblioteca|biblioteca (digital|virtual|escolar|municipal|online)|book lending|empr[ée]stimos? de livros|acervo)/i],
   ['Criptomoedas', /(crypto|bitcoin|blockchain|ethereum|web3|cripto)/i],
+  ['E-commerce', /(e-?commerce|ecomerece|online (shop|store)|\bshopping\b|\bcart\b|carrinho|\bloja\b|marketplace|storefront|amazon clone|shopify|product catalog|cat[áa]logo de produtos)/i],
   ['Bancos e pagamentos', /(\bbank(ing)?\b|\bbanco\b|wallet|carteira|payments?|pagamentos?|picpay|\bpix\b|transfer[êe]ncias?)/i],
   ['Imóveis', /(real estate|im[óo]veis|\bpropert(y|ies)\b|\bhouses?\b (price|rent|sale|listing)|house hunting|aluguel de (casas|apartamentos))/i],
   ['Finanças pessoais', /(expenses?|despesas?|gastos|finan(ce|ças)|budget|or[çc]amento|stock price|investiment)/i],
@@ -332,10 +385,54 @@ const DOMINIOS = [
   ['Portfólio', /(portfolio|portf[óo]lio)/i],
   ['Casa e IoT', /\b(iot|smart home|casa inteligente|home automation|arduino|esp32|raspberry)\b/i],
   ['Jogos clássicos', /\b(tetris|snake|pong|chess|xadrez|sudoku|minesweeper|campo minado|tic[- ]tac[- ]toe|jogo da velha|breakout|flappy|space invaders|2048|wordle)\b/i],
-];
+]);
 
-// regras de antes (mais largas): o que casava com elas veio do nome ou da descrição, não dos tópicos
-const DOMINIO_ANTES = { Biblioteca: /(library management|biblioteca|lending|empr[ée]stimo)/i, Imóveis: /(real estate|im[óo]veis|\bpropert(y|ies)\b)/i };
+/** Começo do README em texto: título e primeiros parágrafos, sem selos, imagens, links nem código. */
+function inicioDoReadme(t) {
+  if (!t) return '';
+  const limpo = t
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/<img\b[^>]*>/gi, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/^\s*[-*_]{3,}\s*$/gm, ' ');
+  const linhas = limpo.split('\n').map((l) => l.trim()).filter((l) => l && !/^(\||-{2,}|[#>]\s*$)/.test(l));
+  return linhas.join(' ').replace(/\s+/g, ' ').slice(0, 700);
+}
+
+function dominioDe(it, inicio) {
+  const id = identidadeDe(it);
+  let melhor = null, pts = 0;
+  for (const [nome, forte, contra] of DOMINIOS) {
+    const texto = `${id} ${inicio}`;
+    if (contra && contra.test(texto)) continue;
+    const p = (forte.test(id) ? 3 : 0) + (forte.test(inicio.slice(0, 220)) ? 2 : forte.test(inicio) ? 1 : 0);
+    if (p > pts) { melhor = nome; pts = p; }
+  }
+  return pts >= 2 ? melhor : null;
+}
+
+// Palavras do README para a busca: títulos das seções e começo do texto, sem palavras vazias nem o que já está no nome
+const VAZIAS = new Set(`the and for with from that this you your are was will can not use using used into via its it's our has have all any but how what when where which who why also more most other some such than then them they these those very just only over about after before here there out get got set run make made new one two each per off all app apps project projects repository repo code readme license licence contributing contribution contributions installation install installing usage getting started start started table contents features feature requirements prerequisites setup step steps docs documentation example examples demo screenshot screenshots built tech stack technologies tools author authors acknowledgements acknowledgments contact support version todo overview introduction description folder structure file files run running local locally clone npm yarn pnpm open http https www com github git main master branch pull request issue issues note notes simple based like want need see following below above available include includes including create created allow allows user users etc http localhost port env environment variables config configuration
+para com uma um uns umas que dos das nos nas pelo pela por como mais seu sua seus suas este esta isso esse essa aqui ser ter tem foi sao são não nao sim sem sobre entre ate até também tambem cada todo toda todos todas projeto projetos repositorio repositório codigo código instalação instalacao instalar uso usar rodar executar como funcionalidades tecnologias ferramentas estrutura pasta arquivo arquivos autor licença licenca contribuição contribuicao sumário sumario descrição descricao sobre requisitos passo passos exemplo exemplos demonstração demonstracao`.split(/\s+/));
+for (const w of `able about above according across actually add added adding after again against ago almost along already also although always among amount another anyone anything anyway appear apply approach around ask aspect away back bad basic basically become been being best better between beyond big bit both bring brief bug bugs case cases cause certain change changes chapter check checks choose clear close come comes coming common complete completed completely consider contain contains context continue could course current currently data day days deal default definitely depend designed detail details develop did different directly doing done down due during early easily easy either else enable end enough ensure entire especially even ever every everything exactly except exist expect experience explain explanation extremely fact fast feel few final finally find fine first fix fixed focus follow following form found free full fully fun further future gave general give given gives goal goals going gone good great group guide hand handle happen hard help helps high highly hold hope however idea ideas important importantly improve improvement information inside instead interest interesting item items itself keep key kind know known large last later latest least left less let level life light likely line lines link links list little live long look looking lot lots low made main mainly major manage many may maybe mean means meant might mind minimal mode moment move much must name named names near nearly necessary next nice nothing now number object objective often old once ones open option optional options order original others otherwise own page pages part particular parts past people perhaps place plan play please point points possible potential practice pre presentation pretty previous probably problem problems process provide provided provides purpose put quick quickly quite rather read ready real really reason recent related release remember report result results return right role same save say second section see seen self send sense separate several short should show shown side similar since single size small something sometimes soon sort source special specific stage standard state still stuff sure system take taken taking team tell term thank thanks theirs thing things think third though thought three through thus time times together too took top total toward towards tried tries true try trying turn type types under understand unique until update updated upon useful version via view want watch way ways well went whether while whole wide wish within without work worked working works world would write written wrong yes yet badge badges shields codecov travis netlify formatting linting lint prettier eslint husky microverse linkedin twitter gmail email website site portfolio mit apache copyright contributors contributor fork star stars give show support acknowledgement deployment deploy deployed live link tests test testing faq author name
+agora ainda algum alguns antes apenas aqui assim bem boa bom cada caso coisa como contra dar depois deve dia diz durante ela ele elas eles enquanto entao então era essa esse esta estar este estes faz fazer feito forma gente grande isso ja já lado logo mas meu minha mesmo muito muitos nada nem nesse neste nos nós nova novo onde outra outro outros pelos pode podem pois porque possa pouco primeiro qual quando quanto quem sempre sendo seja serao será sido sob sobre talvez tambem também tanto tem tempo tenho ter toda todo tudo vai vamos ver vez voce você`.split(/\s+/)) VAZIAS.add(w);
+const semAcento = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+function palavrasDe(it, t, inicio) {
+  if (!t) return '';
+  const titulos = (t.match(/^#{1,4}\s+.+$/gm) ?? []).slice(0, 24).join(' ');
+  const texto = semAcento(`${titulos} ${titulos} ${inicio}`.toLowerCase());
+  const ja = new Set(semAcento(`${it.full_name} ${it.description ?? ''}`.toLowerCase()).split(/[^a-z0-9+#]+/));
+  const conta = new Map();
+  for (const w0 of texto.replace(/:[a-z0-9_+-]+:/g, ' ').split(/[^a-z0-9+#]+/)) {
+    const w = w0.replace(/^#+|#+$/g, w0 === 'c#' || w0 === 'f#' ? '' : '');
+    if (w.length < 3 || w.length > 24 || /^\d+$/.test(w) || /^#/.test(w0) && w0 !== w || VAZIAS.has(w) || ja.has(w)) continue;
+    conta.set(w, (conta.get(w) ?? 0) + 1);
+  }
+  return [...conta].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([w]) => w);
+}
 
 // [nome, regex, linguagens] — frameworks só contam na linguagem deles (gin em Python é palavra comum)
 const JS = ['JavaScript', 'TypeScript', 'Vue', 'Svelte', 'HTML'];
@@ -425,7 +522,9 @@ function etiquetas(it, t, dica, man = null) {
   const temas = TEMAS.filter(([, re, areas]) => (!areas.length || areas.includes(area)) && re.test(curto)).map(([id]) => id);
   if (/(desafio|challenge|rinha|teste t[ée]cnico|technical test|take[- ]home|frontend mentor)/i.test(identidade)) temas.push('desafios');
   if (area === 'backend' && !temas.includes('apis') && /api/i.test(curto)) temas.unshift('apis');
-  const dominio = DOMINIOS.find(([, re]) => re.test(identidade))?.[0] ?? null;
+  const inicio = inicioDoReadme(t);
+  const dominio = dominioDe(it, inicio);
+  const k = palavrasDe(it, t, inicio);
   let api;
   if (area === 'backend') {
     api = [];
@@ -435,7 +534,7 @@ function etiquetas(it, t, dica, man = null) {
     if (!api.length || /\brest(ful)?\b/i.test(curto)) api.unshift('REST');
     api = [...new Set(api)];
   }
-  return { area, sinais, temas: [...new Set(temas)], dominio, stack, api };
+  return { area, sinais, temas: [...new Set(temas)], dominio, stack, api, k, inicio };
 }
 
 const entradaDe = (it, e, nota) => ({
@@ -450,7 +549,19 @@ const entradaDe = (it, e, nota) => ({
   api: e.api,
   estrelas: it.stargazers_count,
   readme: nota,
+  k: e.k,
 });
+
+/** Tira das palavras-chave as que aparecem em muitos READMEs (não ajudam a achar nada) e fica com até 10. */
+function palavrasFinais(lista) {
+  const df = new Map();
+  for (const e of lista) for (const w of new Set(e.k ?? [])) df.set(w, (df.get(w) ?? 0) + 1);
+  const limite = Math.max(20, lista.length * 0.006);
+  for (const e of lista) {
+    const ks = (e.k ?? []).filter((w) => (df.get(w) ?? 0) <= limite && (df.get(w) ?? 0) >= 2).slice(0, 10);
+    e.k = ks.length ? ks.join(' ') : undefined;
+  }
+}
 
 const ordenar = (lista) => lista.sort((a, b) => b.readme - a.readme || b.estrelas - a.estrelas);
 function lerLista() {
@@ -525,12 +636,17 @@ if (REAVALIAR) {
     const e = etiquetas(it, t, x.area ?? 'backend', man);
     // sem os tópicos do GitHub (não ficam guardados), o assunto pode sumir. Mantém o anterior só se ele veio
     // dos tópicos: se não está no nome nem na descrição, e não vem do nome do dono
-    const regras = [DOMINIOS.find(([n]) => n === x.dominio)?.[1], DOMINIO_ANTES[x.dominio]].filter(Boolean);
-    const doTexto = regras.some((re) => re.test(identidadeDe(it)) || re.test(`${x.repo.split('/')[0]} ${x.nota}`));
-    if (!e.dominio && x.dominio && regras.length && !doTexto) e.dominio = x.dominio;
+    const antiga = DOMINIOS.find(([n]) => n === x.dominio);
+    const textoTodo = `${x.repo.split('/')[0]} ${identidadeDe(it)} ${e.inicio}`;
+    const veioDoTexto = antiga && (antiga[1].test(textoTodo) || DOMINIO_VELHO[x.dominio]?.test(textoTodo));
+    const barrada = antiga?.[2]?.test(`${identidadeDe(it)} ${e.inicio}`);
+    // precisão em primeiro lugar: o assunto vem só do nome, da descrição e do começo do README
+    // (tópicos antigos erravam: "video" num jogo, "students" num projeto de machine learning)
+    void antiga; void veioDoTexto; void barrada;
     if (!e.temas.includes('desafios') && x.temas?.includes('desafios')) e.temas.push('desafios');
     novos.push(entradaDe(it, e, nota));
   }, 'READMEs');
+  palavrasFinais(novos);
   gravar(novos);
   console.log(`Resumo: antes=${atual.length} depois=${novos.length}`);
   console.log('Saíram:', [...motivos].map(([m, n]) => `${m}=${n}`).join(' '));
@@ -608,6 +724,7 @@ await emLotes(ler, 16, async ({ it, dica }) => {
   aprovados.push(entradaDe(it, e, nota));
 }, 'READMEs');
 
+palavrasFinais(aprovados);
 const final = [...antigos, ...aprovados];
 gravar(final);
 console.log(`Resumo: candidatos=${candidatos.size} lidos=${ler.length} aprovados=${aprovados.length} total=${final.length}`);

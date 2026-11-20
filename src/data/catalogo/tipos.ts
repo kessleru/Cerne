@@ -38,6 +38,8 @@ export type Entrada = {
   atualizado?: string;
   /** nota do README dada pelo script (Estudar): pesa na ordem misturada */
   readme?: number;
+  /** palavras-chave tiradas do README (Estudar), separadas por espaço: ajudam a busca */
+  k?: string;
 };
 
 export type Linguagem = { nome: string; ext: string; cor: string };

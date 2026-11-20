@@ -18,7 +18,7 @@ export const FAMOSOS: Entrada[] = Object.keys(modulos)
 // famosos de saída; os de estudo entram quando a área deles chega
 const POR_REPO = new Map<string, Entrada>(FAMOSOS.map((e) => [e.repo.toLowerCase(), e]));
 
-type Bruto = { repo: string; nota: string; lang: string; area?: Area; temas?: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number; readme?: number };
+type Bruto = { repo: string; nota: string; lang: string; area?: Area; temas?: string[]; dominio?: string; stack?: string[]; api?: Entrada['api']; estrelas?: number; readme?: number; k?: string };
 const projeto = (e: Bruto, area: Area): Entrada => ({ ...e, temas: e.temas ?? [], area, tipo: 'projeto' });
 
 export type Trilha = {
@@ -73,6 +73,25 @@ export function carregarArea(id: Area): Promise<AreaEstudo | null> {
   }
   return p;
 }
+
+/** Todos os projetos de todas as áreas (para a busca geral); só carrega quando `ativar` vira true. */
+export function useTodasAreas(ativar: boolean): Entrada[] | null {
+  const [, redesenhar] = useState(0);
+  const prontas_ = AREAS_ESTUDO.every((a) => prontas.has(a.id));
+  useEffect(() => {
+    if (!ativar || prontas_) return;
+    let vivo = true;
+    void Promise.all(AREAS_ESTUDO.map((a) => carregarArea(a.id))).then(() => vivo && redesenhar((n) => n + 1));
+    return () => {
+      vivo = false;
+    };
+  }, [ativar, prontas_]);
+  if (!ativar || !prontas_) return null;
+  // a mesma lista sempre (quem usa memoriza por identidade)
+  todasCache ??= AREAS_ESTUDO.flatMap((a) => prontas.get(a.id)!.repos);
+  return todasCache;
+}
+let todasCache: Entrada[] | null = null;
 
 /** Os projetos de uma área; null enquanto o pedaço ainda chega. */
 export function useArea(id: Area | null): AreaEstudo | null {

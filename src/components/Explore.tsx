@@ -1,6 +1,8 @@
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { AREAS_ESTUDO, CATEGORIAS, FAMOSOS, extDaLinguagem, useArea, type Area, type Entrada, type Trilha } from '../data/catalogo';
+import { AREAS, AREAS_ESTUDO, CATEGORIAS, FAMOSOS, extDaLinguagem, useArea, useTodasAreas, type Area, type Entrada, type Trilha } from '../data/catalogo';
+import { TEMAS } from '../data/catalogo/temas';
+import { casados, consulta, palavras, normalizar, pontuar, sugestoes, type Consulta, type Rotulos } from '../lib/buscaEstudo';
 import { FileIcon } from '../icons/FileIcon';
 import type { RepoLink } from '../lib/route';
 import { lerAvatar } from '../data/github/conta';
@@ -41,11 +43,17 @@ const abrir = (r: Entrada, onOpen: (l: RepoLink) => void) => {
   onOpen({ owner, repo });
 };
 
-type Campo = 'lang' | 'dominio' | 'api' | 'stack';
+type Campo = 'area' | 'lang' | 'dominio' | 'tema' | 'api' | 'stack';
 type Filtros = Partial<Record<Campo, string[]>>;
-const valorDe = (e: Entrada, c: Campo): string[] => (c === 'lang' ? [e.lang] : c === 'dominio' ? (e.dominio ? [e.dominio] : []) : c === 'api' ? (e.api ?? []) : (e.stack ?? []));
-// Stack e API somam ("Express e Redis e MongoDB": o projeto tem todos); linguagem e assunto são alternativas ("TypeScript ou JavaScript").
-const SOMA: Record<Campo, boolean> = { stack: true, api: true, lang: false, dominio: false };
+const valorDe = (e: Entrada, c: Campo): string[] =>
+  c === 'lang' ? [e.lang] : c === 'dominio' ? (e.dominio ? [e.dominio] : []) : c === 'api' ? (e.api ?? []) : c === 'tema' ? e.temas : c === 'area' ? (e.area ? [e.area] : []) : (e.stack ?? []);
+// Stack, tema e API somam ("Express e Redis e MongoDB": o projeto tem todos); área, linguagem e assunto são alternativas.
+const SOMA: Record<Campo, boolean> = { stack: true, api: true, tema: true, lang: false, dominio: false, area: false };
+const TEMA_TITULO: Record<string, string> = Object.fromEntries(TEMAS.map((t) => [t.id, t.titulo]));
+const AREA_TITULO: Record<string, string> = Object.fromEntries(AREAS.map((a) => [a.id, a.titulo]));
+const ROTULOS: Rotulos = { temas: TEMA_TITULO, areas: AREA_TITULO };
+/** Como mostrar um valor de filtro (temas e áreas têm id interno). */
+const rotuloDe = (c: Campo, v: string) => (c === 'tema' ? (TEMA_TITULO[v] ?? v) : c === 'area' ? (AREA_TITULO[v] ?? v) : v);
 const casaCampo = (e: Entrada, c: Campo, vs: string[]) => {
   const tem = valorDe(e, c);
   return SOMA[c] ? vs.every((v) => tem.includes(v)) : vs.some((v) => tem.includes(v));
@@ -60,26 +68,29 @@ type Faceta = { titulo: string; campo: Campo; dica: string; valores: [string, nu
  * Em linguagem e assunto (alternativas), a contagem ignora o próprio campo; em stack e API (somam),
  * conta quantos sobrariam ao acrescentar aquele valor.
  */
-function facetasDe(lista: Entrada[], grupo: Trilha['grupo'], filtros: Filtros): Faceta[] {
+function facetasDe(lista: Entrada[], grupo: Trilha['grupo'], filtros: Filtros, todas = false, temaDaTrilha?: string): Faceta[] {
   const conta = (c: Campo, max: number) => {
     const escolhidos = filtros[c] ?? [];
     const m = new Map<string, number>();
-    for (const e of lista) if (casa(e, filtros, SOMA[c] ? undefined : c)) for (const v of valorDe(e, c)) m.set(v, (m.get(v) ?? 0) + 1);
+    for (const e of lista) if (casa(e, filtros, SOMA[c] ? undefined : c)) for (const v of valorDe(e, c)) if (v !== temaDaTrilha) m.set(v, (m.get(v) ?? 0) + 1);
     for (const v of escolhidos) if (!m.has(v)) m.set(v, 0);
     const lista_ = [...m].filter(([v, n]) => n >= 2 || escolhidos.includes(v) || (SOMA[c] && n >= 1 && escolhidos.length > 0));
     return lista_.sort((a, b) => Number(escolhidos.includes(b[0])) - Number(escolhidos.includes(a[0])) || b[1] - a[1]).slice(0, max);
   };
   const out: Faceta[] = [];
-  if (grupo !== 'Linguagens') out.push({ titulo: 'Linguagem', campo: 'lang', dica: 'uma ou outra', valores: conta('lang', 20) });
-  out.push({ titulo: 'Assunto', campo: 'dominio', dica: 'um ou outro', valores: conta('dominio', 40) });
+  if (todas) out.push({ titulo: 'Área', campo: 'area', dica: 'uma ou outra', valores: conta('area', 8) });
+  if (grupo !== 'Linguagens' || todas) out.push({ titulo: 'Linguagem', campo: 'lang', dica: 'uma ou outra', valores: conta('lang', 24) });
+  out.push({ titulo: 'Assunto', campo: 'dominio', dica: 'um ou outro', valores: conta('dominio', 48) });
+  out.push({ titulo: 'Tema', campo: 'tema', dica: 'todos juntos', valores: conta('tema', 30) });
   out.push({ titulo: 'Stack', campo: 'stack', dica: 'todas juntas', valores: conta('stack', 60) });
   out.push({ titulo: 'API', campo: 'api', dica: 'todas juntas', valores: conta('api', 4) });
   return out.filter((f) => f.valores.length > 1 || filtros[f.campo]?.length);
 }
 
 // ---------- ordem ----------
-type Ordem = 'misturar' | 'readme' | 'estrelas' | 'escondidos';
+type Ordem = 'misturar' | 'relevancia' | 'readme' | 'estrelas' | 'escondidos';
 const ORDENS: { value: Ordem; label: string }[] = [
+  { value: 'relevancia', label: 'Mais relevante' },
   { value: 'misturar', label: 'Misturado' },
   { value: 'readme', label: 'README mais completo' },
   { value: 'estrelas', label: 'Mais estrelas' },
@@ -106,8 +117,9 @@ export function misturar(lista: Entrada[], semente: number) {
     .sort((a, b) => b.k - a.k)
     .map((x) => x.e);
 }
-function ordenar(lista: Entrada[], ordem: Ordem, semente: number) {
-  if (ordem === 'misturar') return misturar(lista, semente);
+function ordenar(lista: Entrada[], ordem: Ordem, semente: number, pontos?: Map<Entrada, number>) {
+  if (ordem === 'relevancia' && pontos) return [...lista].sort((a, b) => (pontos.get(b) ?? 0) - (pontos.get(a) ?? 0));
+  if (ordem === 'misturar' || ordem === 'relevancia') return misturar(lista, semente);
   const l = [...lista];
   if (ordem === 'readme') return l.sort((a, b) => (b.readme ?? 0) - (a.readme ?? 0) || (b.estrelas ?? 0) - (a.estrelas ?? 0));
   if (ordem === 'estrelas') return l.sort((a, b) => (b.estrelas ?? 0) - (a.estrelas ?? 0));
@@ -116,8 +128,24 @@ function ordenar(lista: Entrada[], ordem: Ordem, semente: number) {
 export const novaSemente = () => Math.floor(Math.random() * 2 ** 31);
 
 const POR_PAGINA = 24;
+const NOME_CAMPO: Record<Campo, string> = { area: 'Área', lang: 'Linguagem', dominio: 'Assunto', tema: 'Tema', stack: 'Stack', api: 'API' };
 const VISIVEIS = 8; // chips por linha de filtro antes do +N
 const ORDEM_KEY = 'cerne:ordem';
+
+const FILTRO_KEY = 'cerne:estudar-filtro';
+/** Deixa o Estudar pronto numa área, com um filtro ligado (usado pela visão geral: clicar numa etiqueta). */
+export function abrirEstudarCom(area: Area, campo?: 'dominio' | 'stack' | 'lang' | 'tema', valor?: string) {
+  gravar(ABA_KEY, 'estudar');
+  gravar(AREA_KEY, area);
+  let trilhas: Record<string, string> = {};
+  try {
+    trilhas = JSON.parse(ler(TRILHA_KEY) ?? '{}') ?? {};
+  } catch {
+    /* começa do zero */
+  }
+  gravar(TRILHA_KEY, JSON.stringify({ ...trilhas, [area]: 'tudo' }));
+  gravar(FILTRO_KEY, JSON.stringify(campo && valor ? { [campo]: [valor] } : {}));
+}
 
 /** Deixa a próxima visita à página inicial já numa aba (usado pela paleta). */
 export function abrirAbaExplorar(a: Aba) {
@@ -187,8 +215,31 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
       return {};
     }
   });
-  const [filtros, setFiltros] = useState<Filtros>({});
+  // filtro deixado pela visão geral (etiqueta clicada): vale uma vez
+  const [filtros, setFiltros] = useState<Filtros>(() => {
+    const v = ler(FILTRO_KEY);
+    if (v === null) return {};
+    try {
+      localStorage.removeItem(FILTRO_KEY);
+    } catch {
+      /* sem armazenamento */
+    }
+    try {
+      return (JSON.parse(v) as Filtros) ?? {};
+    } catch {
+      return {};
+    }
+  });
+  const veioDaVisao = useRef(Object.keys(filtros).length > 0);
+  useEffect(() => {
+    if (!veioDaVisao.current) return;
+    veioDaVisao.current = false;
+    requestAnimationFrame(() => document.getElementById('explorar')?.scrollIntoView({ block: 'start' }));
+  }, []);
   const [q, setQ] = useState('');
+  // a busca roda um pouco atrás da digitação: a caixa nunca trava, mesmo em 13 mil projetos
+  const qBusca = useDeferredValue(q);
+  const [escopo, setEscopo] = useState<'lista' | 'tudo'>('lista');
   const [mostrar, setMostrar] = useState(POR_PAGINA);
   const [abertas, setAbertas] = useState<Set<Campo>>(() => new Set());
   const [painel, setPainel] = useState(false);
@@ -206,6 +257,7 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
   const limpar = () => {
     setFiltros({});
     setQ('');
+    setEscopo('lista');
     setMostrar(POR_PAGINA);
     setAbertas(new Set());
     setMinEstrelas(0);
@@ -223,18 +275,54 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     setAreaId(a);
     gravar(AREA_KEY, a);
   };
-  // base: o que a busca e as estrelas deixam; os filtros de faceta vêm por cima
-  const base = useMemo(() => {
-    if (!t) return [];
-    const termo = q.trim().toLowerCase();
-    return t.repos.filter(
-      (e) =>
-        (e.estrelas ?? 0) >= minEstrelas &&
-        (!termo || `${e.repo} ${e.nota} ${(e.stack ?? []).join(' ')} ${e.dominio ?? ''}`.toLowerCase().includes(termo)),
-    );
-  }, [t, q, minEstrelas]);
-  const lista = useMemo(() => ordenar(base.filter((e) => casa(e, filtros)), ordem, semente), [base, filtros, ordem, semente]);
-  const facetas = useMemo(() => (t ? facetasDe(base, t.grupo, filtros) : []), [t, base, filtros]);
+  // busca: com 2 letras já procura; em "todas as áreas" carrega as outras áreas (uma vez)
+  const c = useMemo(() => consulta(qBusca), [qBusca]);
+  const buscando = c.termos.length > 0;
+  const todas = useTodasAreas(buscando || escopo === 'tudo');
+  const emTudo = escopo === 'tudo';
+  const fonte = useMemo(() => (emTudo ? (todas ?? []) : (t?.repos ?? [])), [emTudo, todas, t]);
+  // pontos de relevância (só quando há busca) e a base: o que a busca e as estrelas deixam
+  const { base, pontos } = useMemo(() => {
+    const pts = new Map<Entrada, number>();
+    const b = fonte.filter((e) => {
+      if ((e.estrelas ?? 0) < minEstrelas) return false;
+      if (!buscando) return true;
+      const p = pontuar(e, c, ROTULOS);
+      if (p > 0) pts.set(e, p);
+      return p > 0;
+    });
+    return { base: b, pontos: pts };
+  }, [fonte, minEstrelas, buscando, c]);
+  // quantos a mesma busca acha nas outras áreas (para oferecer a troca)
+  const noTotal = useMemo(() => {
+    if (!buscando || emTudo || !todas) return null;
+    let n = 0;
+    for (const e of todas) if ((e.estrelas ?? 0) >= minEstrelas && pontuar(e, c, ROTULOS) > 0 && casa(e, filtros)) n++;
+    return n;
+  }, [buscando, emTudo, todas, c, minEstrelas, filtros]);
+  const ordemEfetiva: Ordem = buscando && ordem === 'misturar' ? 'relevancia' : !buscando && ordem === 'relevancia' ? 'misturar' : ordem;
+  const lista = useMemo(() => ordenar(base.filter((e) => casa(e, filtros)), ordemEfetiva, semente, pontos), [base, filtros, ordemEfetiva, semente, pontos]);
+  const facetas = useMemo(() => (t ? facetasDe(base, emTudo ? 'Tudo' : t.grupo, filtros, emTudo, !emTudo && t.grupo === 'Temas' ? t.id : undefined) : []), [t, base, filtros, emTudo]);
+  // sugestões: valores de filtro que casam com o que foi digitado ("spring" -> Stack: Spring Boot)
+  const sugeridas = useMemo(() => {
+    if (!buscando) return [];
+    const valores: { campo: Campo; valor: string; rotulo?: string }[] = [];
+    const vistos = new Set<string>();
+    const add = (campo: Campo, valor: string, rotulo?: string) => {
+      const k = campo + ':' + valor;
+      if (vistos.has(k) || filtros[campo]?.includes(valor)) return;
+      vistos.add(k);
+      valores.push({ campo, valor, rotulo });
+    };
+    for (const e of todas ?? fonte) {
+      if (e.dominio) add('dominio', e.dominio);
+      for (const x of e.stack ?? []) add('stack', x);
+      add('lang', e.lang);
+      for (const x of e.temas) add('tema', x, TEMA_TITULO[x]);
+    }
+    for (const a of AREAS_ESTUDO) add('area', a.id, a.titulo);
+    return sugestoes(c, valores).slice(0, 6);
+  }, [buscando, c, todas, fonte, filtros]);
   if (!escolhida) return <p className="ks-explore__vazio">A lista de estudo ainda está vazia. Rode node scripts/catalogo-estudo.mjs para montá-la.</p>;
   const barra = (
     <div className="ks-areas" role="tablist" aria-label="Áreas">
@@ -280,6 +368,13 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
     setMostrar(POR_PAGINA);
   };
   const ativos = qtdFiltros(filtros) + (minEstrelas ? 1 : 0);
+  const usarSugestao = (campo: Campo, valor: string, termo: string) => {
+    if (campo === 'area') setEscopo('tudo');
+    setFiltros((f) => (f[campo]?.includes(valor) ? f : { ...f, [campo]: [...(f[campo] ?? []), valor] }));
+    // tira da busca a palavra que virou filtro
+    setQ((atual) => atual.split(/\s+/).filter((w) => !palavras(w).includes(termo)).join(' '));
+    setMostrar(POR_PAGINA);
+  };
   const limparFiltros = () => {
     setFiltros({});
     setMinEstrelas(0);
@@ -322,28 +417,39 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
         <header className="ks-trail__head">
           <Selo t={t} size={48} />
           <div className="ks-trail__title">
-            <h3 id="trilha-titulo">{t.titulo}</h3>
-            <p>{t.grupo === 'Linguagens' ? `${area.titulo} em ${t.titulo}: projetos de pessoas.` : t.resumo}</p>
+            <h3 id="trilha-titulo">{emTudo ? 'Todas as áreas' : t.titulo}</h3>
+            <p>{emTudo ? 'A busca em todos os projetos do Estudar.' : t.grupo === 'Linguagens' ? `${area.titulo} em ${t.titulo}: projetos de pessoas.` : t.resumo}</p>
           </div>
-          <span className="ks-trail__count">{lista.length}</span>
+          <span className="ks-trail__count">{lista.length.toLocaleString('pt-BR')}</span>
         </header>
         <div className="ks-trail__tools">
           <span className="ks-trail__search">
             <Icon name="search" size={14} />
-            <input value={q} onChange={(e) => { setQ(e.target.value); setMostrar(POR_PAGINA); }} placeholder="Buscar por nome, assunto ou stack" aria-label="Buscar nesta lista" />
+            <input
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setMostrar(POR_PAGINA); }}
+              onKeyDown={(e) => { if (e.key === 'Escape' && q) { e.preventDefault(); setQ(''); } }}
+              placeholder="Buscar: livraria, jwt, clima react, chess..."
+              aria-label="Buscar projetos"
+            />
+            {q && (
+              <button type="button" className="ks-trail__limpa" aria-label="Limpar busca" onClick={() => setQ('')}>
+                <Icon name="x" size={13} />
+              </button>
+            )}
           </span>
           <div className="ks-trail__ordem">
             <Select
               ariaLabel="Ordem da lista"
-              value={ordem}
-              options={ORDENS}
+              value={ordemEfetiva}
+              options={buscando ? ORDENS : ORDENS.filter((o) => o.value !== 'relevancia')}
               onChange={(v) => {
                 setOrdem(v as Ordem);
                 gravar(ORDEM_KEY, v);
                 setMostrar(POR_PAGINA);
               }}
             />
-            {ordem === 'misturar' && (
+            {ordemEfetiva === 'misturar' && (
               <button type="button" className="ks-trail__icon" data-tip="Misturar de novo" aria-label="Misturar de novo" onClick={() => { setSemente(novaSemente()); setMostrar(POR_PAGINA); }}>
                 <Icon name="refresh" size={15} />
               </button>
@@ -356,6 +462,31 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
             <Icon name="chevronRight" size={14} className="ks-trail__chev" />
           </button>
         </div>
+        {(buscando || emTudo) && (
+          <div className="ks-busca">
+            <div className="ks-busca__escopo" role="group" aria-label="Onde buscar">
+              <button type="button" aria-pressed={!emTudo} onClick={() => { setEscopo('lista'); setFiltros((f) => { const n = { ...f }; delete n.area; return n; }); setMostrar(POR_PAGINA); }}>
+                {t.grupo === 'Tudo' ? area.titulo : `${area.titulo} · ${t.titulo}`}
+              </button>
+              <button type="button" aria-pressed={emTudo} onClick={() => { setEscopo('tudo'); setMostrar(POR_PAGINA); }}>
+                Todas as áreas{noTotal !== null && <span className="ks-facets__n">{noTotal.toLocaleString('pt-BR')}</span>}
+                {buscando && !todas && <span className="ks-facets__n">…</span>}
+              </button>
+            </div>
+            {sugeridas.length > 0 && (
+              <div className="ks-busca__sug" aria-label="Usar como filtro">
+                <span className="ks-busca__rot">Filtrar por</span>
+                {sugeridas.map((x) => (
+                  <button key={x.campo + x.valor} type="button" className="ks-busca__chip" onClick={() => usarSugestao(x.campo, x.valor, x.termo)}>
+                    <span className="ks-busca__campo">{NOME_CAMPO[x.campo]}</span>
+                    {x.campo === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(x.valor)}`} className="ks-chip__icon" />}
+                    {x.rotulo}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {!painel && ativos > 0 && (
           <div className="ks-ativos" aria-label="Filtros ligados">
             {minEstrelas > 0 && (
@@ -366,9 +497,9 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
               </button>
             )}
             {escolhidos.map(([c, v]) => (
-              <button key={c + v} type="button" className="ks-ativos__chip" onClick={() => alternar(c, v)} aria-label={`Tirar filtro: ${v}`}>
+              <button key={c + v} type="button" className="ks-ativos__chip" onClick={() => alternar(c, v)} aria-label={`Tirar filtro: ${rotuloDe(c, v)}`}>
                 {c === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(v)}`} className="ks-chip__icon" />}
-                {v}
+                {rotuloDe(c, v)}
                 <Icon name="x" size={12} />
               </button>
             ))}
@@ -395,7 +526,7 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
                     return (
                       <button key={v} type="button" className="ks-famous__cat" aria-pressed={on} disabled={!on && n === 0} onClick={() => alternar(f.campo, v)}>
                         {f.campo === 'lang' && <FileIcon pack={iconPack} path={`x.${extDaLinguagem(v)}`} className="ks-chip__icon" />}
-                        {v}
+                        {rotuloDe(f.campo, v)}
                         <span className="ks-facets__n">{n}</span>
                       </button>
                     );
@@ -415,15 +546,23 @@ function Estudar({ onOpen }: { onOpen: (l: RepoLink) => void }) {
             )}
           </div>
         )}
-        {lista.length === 0 ? (
-          <p className="ks-explore__vazio">
-            Nada com esses filtros.{' '}
-            {ativos > 0 && <button type="button" className="ks-linkbtn" onClick={limparFiltros}>limpar filtros</button>}
-          </p>
+        {emTudo && buscando && !todas ? (
+          <p className="ks-explore__vazio" aria-busy="true">Carregando todas as áreas…</p>
+        ) : lista.length === 0 ? (
+          <div className="ks-explore__vazio ks-vazio">
+            <p>{buscando ? `Nada encontrado para "${q.trim()}"${ativos ? ' com esses filtros' : ''}.` : 'Nada com esses filtros.'}</p>
+            <div className="ks-vazio__acoes">
+              {!emTudo && buscando && (noTotal ?? 0) > 0 && (
+                <button type="button" className="key" onClick={() => setEscopo('tudo')}>Ver {noTotal} em todas as áreas</button>
+              )}
+              {ativos > 0 && <button type="button" className="key" onClick={limparFiltros}>Limpar filtros</button>}
+              {buscando && <button type="button" className="ks-linkbtn" onClick={() => setQ('')}>limpar busca</button>}
+            </div>
+          </div>
         ) : (
           <ul className="ks-repogrid">
             {lista.slice(0, mostrar).map((r) => (
-              <RepoCard key={r.repo} r={r} feito={feitosAgora.has(r.repo)} onOpen={onOpen} />
+              <RepoCard key={r.repo} r={r} feito={feitosAgora.has(r.repo)} onOpen={onOpen} busca={buscando ? c : undefined} comArea={emTudo} />
             ))}
           </ul>
         )}
@@ -507,18 +646,32 @@ export function OwnerAvatar({ repo, size = 36 }: { repo: string; size?: number }
   );
 }
 
-function RepoCard({ r, feito, onOpen }: { r: Entrada; feito: boolean; onOpen: (l: RepoLink) => void }) {
+/** Texto com as palavras que casaram com a busca destacadas. */
+function Marcado({ texto, busca }: { texto: string; busca?: Consulta }) {
+  if (!busca) return <>{texto}</>;
+  const alvo = casados(texto, busca);
+  if (!alvo.size) return <>{texto}</>;
+  // quebra mantendo os separadores, para remontar o texto igual
+  return (
+    <>
+      {texto.split(/([A-Za-zÀ-ÿ0-9+#]+)/).map((parte, i) => (alvo.has(normalizar(parte)) ? <mark key={i} className="ks-marca">{parte}</mark> : parte))}
+    </>
+  );
+}
+
+function RepoCard({ r, feito, onOpen, busca, comArea }: { r: Entrada; feito: boolean; onOpen: (l: RepoLink) => void; busca?: Consulta; comArea?: boolean }) {
   const { icons } = usePrefs();
-  const [dono, nome] = r.repo.split('/');
+  const [dono, nome] = r.repo.split('/') as [string, string];
   return (
     <li className={`ks-repocard${feito ? ' is-done' : ''}`}>
       <button type="button" className="ks-repocard__main" onClick={() => abrir(r, onOpen)} aria-label={`Abrir ${r.repo}`}>
         <OwnerAvatar repo={r.repo} size={36} />
         <span className="ks-repocard__body">
-          <span className="ks-repocard__name"><span>{dono}/</span>{nome}</span>
-          <span className="ks-repocard__nota">{r.nota}</span>
+          <span className="ks-repocard__name"><span>{dono}/</span><Marcado texto={nome} busca={busca} /></span>
+          <span className="ks-repocard__nota"><Marcado texto={r.nota} busca={busca} /></span>
           <span className="ks-repocard__meta">
             <span className="ks-chip"><FileIcon pack={icons} path={`x.${extDaLinguagem(r.lang)}`} className="ks-chip__icon" />{r.lang}</span>
+            {comArea && r.area && <span className="ks-chip">{AREA_TITULO[r.area]}</span>}
             {r.dominio && <span className="ks-chip ks-chip--dom">{r.dominio}</span>}
             {r.stack?.slice(0, 3).map((x) => <span key={x} className="ks-chip ks-chip--file">{x}</span>)}
             {r.estrelas !== undefined && <span className="ks-chip ks-chip--stars"><Icon name="star" size={11} />{r.estrelas}</span>}
