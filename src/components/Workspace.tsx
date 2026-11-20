@@ -7,7 +7,7 @@ import { PACK_LABELS } from '../icons/packs';
 import { formatLineHash, parseLineHash, type LineRange } from '../lib/hash';
 import { baseName, langOf } from '../lib/lang';
 import { extractSymbols, hasSymbols } from '../lib/symbols';
-import { buildPath, parseRepoLink, type RepoLink } from '../lib/route';
+import { buildPath, parseLocation, parseRepoLink, type RepoLink } from '../lib/route';
 import { source } from '../data/source';
 import { ACCENTS, APPEARANCE_LABELS, DARK_THEMES, SCOPE_LABELS, effectiveEditorTheme, prefsStore, reducedMotion, usePrefs, type Density, type EditorScope, type IconPack } from '../state/prefs';
 import { useEditorVars, varsToStyle } from '../state/editorTheme';
@@ -263,6 +263,20 @@ export function Workspace({ session, onExit, onOpen }: { session: Session; onExi
     if (same) history_replace(url);
     else history_push(url);
   }, [active, refName, refPedido, selection, session.owner, session.repo]);
+
+  // voltar/avançar do navegador dentro do mesmo repositório: a tela acompanha o endereço
+  // (antes o endereço mudava para o arquivo anterior e a tela continuava no mesmo arquivo)
+  useEffect(() => {
+    const on = () => {
+      const l = parseLocation(location.pathname, location.hash);
+      if (!l || l.owner.toLowerCase() !== session.owner.toLowerCase() || l.repo.toLowerCase() !== session.repo.toLowerCase()) return;
+      setDrawer(false);
+      if (l.path) openFile(l.path, 'preview');
+      else setView('overview');
+    };
+    window.addEventListener('popstate', on);
+    return () => window.removeEventListener('popstate', on);
+  }, [openFile, session.owner, session.repo]);
 
   const setSelection = useCallback(
     (r: LineRange | null) => {

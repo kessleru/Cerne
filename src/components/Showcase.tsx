@@ -6,8 +6,8 @@ import { usePrefs } from '../state/prefs';
 import { OwnerAvatar, misturar, novaSemente } from './Explore';
 
 // ---------- carrossel ----------
-// 24 por faixa já passa da largura de uma tela 4K; mais que isso só pesa (cada item vai duas vezes)
-const POR_FAIXA = 24;
+// projetos por faixa (cada um vai duas vezes, para a volta não ter emenda)
+const POR_FAIXA = 40;
 export function Marquee({ onOpen }: { onOpen: (slug: string) => void }) {
   // faixa de cima: famosos; de baixo: projetos de pessoas (os de README mais completo), em sentidos opostos
   const [semente] = useState(novaSemente); // cada visita mostra outros projetos

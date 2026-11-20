@@ -19,10 +19,10 @@
 .ks-home__navright { display: flex; align-items: center; gap: var(--space-1); }
 .ks-home__navright .ks-accountbtn { margin-left: var(--space-2); }
 
-.ks-home__body { display: grid; justify-items: center; gap: var(--space-8); width: min(1120px, 100%); margin: 0 auto; padding: 12vh var(--space-6) var(--space-12); box-sizing: border-box; }
+.ks-home__body { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: var(--space-8); width: min(1120px, 100%); margin: 0 auto; padding: 12vh var(--space-6) var(--space-12); box-sizing: border-box; }
 
 /* herói */
-.ks-home__hero { display: grid; justify-items: center; width: min(680px, 100%); text-align: center; }
+.ks-home__hero { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; width: min(680px, 100%); text-align: center; }
 .ks-home__eyebrow {
   display: inline-flex;
   align-items: center;
@@ -90,7 +90,7 @@
   .ks-home__nav { padding: var(--space-2) var(--space-4); }
   .ks-home__body { gap: var(--space-8); padding: var(--space-10) var(--space-4) var(--space-10); }
   .ks-home__lead { font-size: 15px; line-height: 24px; margin-bottom: var(--space-6); }
-  .ks-home__field { height: 52px; }
+  .ks-home__field { box-sizing: border-box; height: 52px; }
   .ks-home__go { padding-inline: 10px; }
   .ks-home__title br { display: none; }
 }

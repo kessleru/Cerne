@@ -1,5 +1,5 @@
 /* Explorar: abas da página inicial, trilhas de estudo e repositórios famosos. Só tokens do Kessleru. */
-.ks-explore { display: grid; gap: var(--space-4); width: min(920px, 100%); }
+.ks-explore { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); width: min(920px, 100%); }
 .ks-explore.is-voce .ks-home__cards:not(.is-two) { justify-self: center; }
 .ks-explore:is(.is-estudar, .is-famosos) { width: min(1080px, 100%); }
 .ks-explore__tabs { display: flex; justify-content: center; gap: var(--space-1); padding: 3px; justify-self: center; border: 1px solid var(--ctp-surface-0); border-radius: var(--radius-full); background: var(--ctp-mantle); }
@@ -89,6 +89,15 @@
       .ks-repocard__main { padding: var(--space-3); }
   .ks-repocard__nota { white-space: normal; }
   .ks-explore__tab { padding: 0 var(--space-3); }
+}
+/* celular: as quatro abas cabem numa linha (sem ícone nas que não estão abertas, texto sem quebrar) */
+@media (max-width: 479px) {
+  .ks-explore__tabs { justify-self: stretch; overflow-x: auto; scrollbar-width: none; }
+  .ks-explore__tab { flex: 1 1 auto; justify-content: center; gap: 4px; padding: 0 var(--space-2); white-space: nowrap; }
+  .ks-explore__tab:not([aria-selected='true']) > .ks-icon { display: none; }
+}
+@media (max-width: 379px) {
+  .ks-explore__tab { padding: 0 6px; font-size: 12px; }
 }
 .ks-ownerpic.is-mono { background: color-mix(in srgb, var(--c) 18%, var(--ctp-mantle)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent); color: var(--c); font-size: 13px; letter-spacing: -0.02em; }
 /* filtros de comparação dentro da trilha */

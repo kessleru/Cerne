@@ -43,6 +43,8 @@ export function Tooltip() {
     };
 
     const onOver = (e: PointerEvent) => {
+      // no toque não existe "passar por cima": a dica ficaria presa na tela depois do toque, tapando o que abriu
+      if (e.pointerType === 'touch') return;
       const el = tipOf(e.target);
       if (!el || el === shown.current) return;
       clearTimer();
